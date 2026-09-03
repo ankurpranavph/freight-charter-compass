@@ -12,6 +12,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from app.db.connection import db_session
 from app.db.seed import run_seed
+from app.engine.book_or_wait import DEFAULT_DECISION_HORIZON, evaluate_book_or_wait
 from app.engine.compatibility import build_matrix, check_compatibility
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 from app.engine.optimizer import rank_options
@@ -200,3 +201,30 @@ def optimize(port_id: str, cargo_tonnes: float | None = Query(None, gt=0)):
         origins = [dict(r) for r in conn.execute("SELECT * FROM origin_ports").fetchall()]
     ranked = rank_options(dict(port_row), vessels, origins, cargo_tonnes=cargo_tonnes)
     return [{**opt.as_dict(), "rank": i + 1} for i, opt in enumerate(ranked)]
+
+
+@app.get("/api/v1/decision/book-vs-wait/{commodity}")
+def book_or_wait(
+    commodity: str, horizon: int = Query(DEFAULT_DECISION_HORIZON, ge=1, le=24)
+):
+    """Module 7 (last step of Predict -> Simulate -> Optimize -> Recommend):
+    should procurement lock in this commodity's price now, or wait? Built
+    directly on Module 1's own SARIMAX forecast — compares the latest real
+    price to the forecast at `horizon` months out. See
+    app/engine/book_or_wait.py for the decision thresholds and the honest
+    low/high confidence flag. 404 for an unknown/empty commodity;
+    `status: "insufficient_data"` (not an error) if there isn't enough
+    history loaded yet for that commodity."""
+    with db_session() as conn:
+        rows = conn.execute(
+            "SELECT date, price_usd FROM commodity_price_history WHERE commodity = ? ORDER BY date",
+            (commodity,),
+        ).fetchall()
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"Unknown or empty commodity '{commodity}'")
+    df = pd.DataFrame([dict(r) for r in rows])
+    try:
+        result = evaluate_book_or_wait(commodity, df, horizon=horizon)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return result.as_dict()

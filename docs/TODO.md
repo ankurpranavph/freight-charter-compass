@@ -31,10 +31,10 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-None open. Modules 1, 4, 5, and 6 (forecast, compatibility, voyage cost,
-cost optimizer) are all done and tested. Next up: Module 7 (book-now-vs-
-wait), the last piece of the "Decision engine" block — see "Remaining"
-below.
+None open. Modules 1 and 4-7 (forecast, compatibility, voyage cost, cost
+optimizer, book-now-vs-wait) are all done and tested — the full "Decision
+engine" block (Hour 13-17) is complete. Next up: Hour 17-23, the frontend
+shell — see "Remaining" below.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -107,10 +107,20 @@ below.
       Module 4's hard gate rather than merely penalized. New endpoint
       `GET /api/v1/optimize/{port_id}?cargo_tonnes=`. 12 new tests (9
       unit, 3 against real seeded data). 60 total now.
-- [ ] **Book-now-vs-wait decision (Module 7):** `app/engine/book_or_wait.py`,
-      `/api/v1/decision/book-vs-wait` — uses Module 1's forecast to judge
-      whether current prices look favourable relative to trend. Last
-      module of the "Decision engine" block (Hour 13–17).
+- [x] **Book-now-vs-wait decision (Module 7), done — last "Decision
+      engine" module:** `app/engine/book_or_wait.py` — reuses Module 1's
+      own SARIMAX forecast as-is (no second model) to compare the latest
+      real price against the forecast at a near-term horizon (default 3
+      months). Classifies BOOK_NOW / WAIT / HOLD by expected % move, plus
+      an honest `confidence: "low"` flag whenever the forecast's own 95%
+      CI still contains today's real price (the model can't rule out no
+      real change). Deliberately kept separate from Module 6's risk score
+      — see DECISIONS.md #17. New endpoint `GET
+      /api/v1/decision/book-vs-wait/{commodity}?horizon=1..24`. 12 new
+      tests (9 unit incl. synthetic uptrend/downtrend direction checks,
+      3 against real seeded data — asserting shape/contract, not a pinned
+      verdict, since the actual decision legitimately depends on the
+      latest real price whenever the test runs). 72 total now.
 - [ ] **Frontend shell (Hour 17–23):** React+Vite scaffold, Overview /
       Forecast / Recommendation pages wired to the live API.
 - [ ] **Frontend, rest of MVP (Hour 23–27):** Cost Optimization page, Data

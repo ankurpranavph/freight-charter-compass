@@ -123,9 +123,15 @@ not created speculatively upfront.
   clearance margin at berth, see DECISIONS.md #16). 404 for an unknown
   port_id. An incompatible or too-small-for-cargo_tonnes option is simply
   absent from the ranking, not flagged.
+- `GET /api/v1/decision/book-vs-wait/{commodity}?horizon=1..24` — Module
+  7: reuses Module 1's own forecast (no second model) to recommend
+  BOOK_NOW / WAIT / HOLD, with an honest `confidence: "low"` flag when
+  the forecast's 95% CI still contains today's real price (see
+  DECISIONS.md #17). 404 for an unknown/empty commodity;
+  `status: "insufficient_data"` if there isn't enough history loaded yet.
 
-Planned next (Module 7 onward): `/api/v1/decision/book-vs-wait`,
-`/api/v1/scenario/simulate`, `/api/v1/data-sources`.
+Planned next: `/api/v1/scenario/simulate`, `/api/v1/data-sources` (Phase
+2 / polish items — see TODO.md).
 
 ## Data sources — real vs. calculated vs. simulated
 
@@ -233,11 +239,24 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
 - 60 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
   forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
   optimizer-engine).
+- **Module 7 (book-now-vs-wait) built — Decision engine block complete:**
+  `app/engine/book_or_wait.py` — reuses Module 1's own SARIMAX forecast
+  as-is (no second model): compares the latest real price to the
+  forecast at a near-term horizon (default 3 months) and classifies
+  BOOK_NOW / WAIT / HOLD by expected % move. Honestly flags
+  `confidence: "low"` whenever the forecast's own 95% CI still contains
+  today's real price, rather than presenting a point estimate as more
+  certain than it is. Deliberately kept separate from Module 6's risk
+  score (market timing vs. vessel/route physical risk) — see
+  DECISIONS.md #17. `GET /api/v1/decision/book-vs-wait/{commodity}`.
+- 72 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
+  forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
+  optimizer-engine + 12 book-or-wait).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
-covers the two series we need), Indian port traffic history, and
-everything from Module 7 (book-now-vs-wait) onward — see TODO.md for the
-exact next step.
+covers the two series we need), Indian port traffic history, and the
+entire frontend (Hour 17-23 onward) — see TODO.md for the exact next
+step.
 
 ## Important assumptions
 

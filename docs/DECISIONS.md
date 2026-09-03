@@ -387,3 +387,56 @@ Capesize doesn't get a risk penalty at all — it's absent from the
 ranking entirely (9 = 3 vessels x 3 origins), because it fails Module
 4's physical gate there (DECISIONS.md #14), which is a stronger and
 more honest statement than a merely-penalized option would be.
+
+## 17. Book-now-vs-wait: reuses Module 1's forecast as-is, no second model
+
+**Decision:** Module 7 (the last piece of Predict -> Simulate -> Optimize
+-> Recommend) answers "should procurement lock in this commodity's price
+now, or wait?" by directly reusing Module 1's own SARIMAX forecast — it
+does not train, fit, or invent a second model. It compares the latest
+real price to the forecast's point estimate at a near-term horizon
+(default 3 months) and classifies the expected move: >= +3% -> BOOK_NOW,
+<= -3% -> WAIT, otherwise HOLD (no strong signal either way).
+
+**Why reuse instead of building a second model:** every number this
+module needs — the forecast, its 95% CI, and its own evaluated accuracy
+against the seasonal-naive baseline — already exists from Module 1. A
+second, separate "decision model" would either quietly duplicate that
+work or diverge from it, and either way would be harder to defend to a
+judge asking "is this the same forecast as the one on the Predict page."
+Reuse keeps the two pages provably consistent.
+
+**Why 3 months and not the full horizon:** a near-term window is the
+actionable one for a procurement decision — long enough to matter, short
+enough that the forecast hasn't degraded into the wide, low-value
+uncertainty a 12+ month SARIMAX projection carries. `horizon` is exposed
+as a query parameter (1-24, same bounds as the forecast endpoint) for
+anyone who wants a longer view.
+
+**Why this is scoped away from Module 6:** Module 6's "risk" is a
+property of a specific vessel/port pair (physical berth clearance).
+This module's signal is a property of the market alone, independent of
+which vessel eventually carries the cargo. Blending the two into one
+score would hide which factor is actually driving a recommendation — see
+DECISIONS.md #16 for the same reasoning applied in the other direction.
+
+**Honesty on confidence, not just a verdict:** a point forecast can look
+more decisive than it is. If the forecast's own 95% CI at the target
+horizon still contains today's real price, the model itself can't rule
+out little or no real movement — that's surfaced as `confidence: "low"`
+rather than hidden, so a BOOK_NOW/WAIT verdict paired with "confidence:
+low" reads as the honest lean it is. This mirrors DECISIONS.md #14's
+"unknown" state and #16's uncertainty-as-max-caution treatment: every
+module in this app has one place where it admits what it doesn't know,
+rather than forcing a confident-looking number out of thin data.
+
+**Tested against direction, not against real-data verdicts:** unit tests
+assert BOOK_NOW on a strong synthetic uptrend and WAIT on a strong
+synthetic downtrend (unambiguous by construction). The real-data API
+tests assert shape/contract only, not a specific decision — a fresh
+`git clone` only has the 3-month starter snapshot (`insufficient_data`
+until `ingest_worldbank.py` is re-run), and even on this machine, the
+actual verdict depends on the latest real World Bank price at whatever
+moment the test runs, which will legitimately change over time. Pinning
+an exact verdict in a test would be pinning today's market, not the
+code's correctness.
