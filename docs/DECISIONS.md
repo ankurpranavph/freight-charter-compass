@@ -338,3 +338,52 @@ pattern, and it connects directly to Module 4's finding: Capesize is the
 cheapest per tonne but is exactly the vessel class that can't call at
 Paradip or Dhamra (DECISIONS.md #14). Module 6's optimizer will need to
 weigh this real tension, not a synthetic one.
+
+## 16. Cost optimizer: risk signal scoped to physical clearance margin, not price-trend uncertainty
+
+**Decision:** Module 6 ranks every physically-compatible vessel x
+origin-port combination for a destination by a *risk-adjusted* cost per
+tonne, where "risk" means one specific, calculated thing: how tight the
+vessel's physical clearance is at that port (draft/LOA/beam margin as a
+fraction of the vessel's own dimension), not a general-purpose "risk
+score."
+
+**Why this scope and not a broader one:** the temptation with an
+"optimizer" module is to fold in everything that could matter — price
+trend, market volatility, congestion, weather. We deliberately didn't.
+The physical-margin signal is defensible because it's a real number
+already sitting in Module 4's own check data (no invented weights, no
+synthetic distribution), and it answers a genuine operational question:
+a vessel that clears a port's draft limit by 10cm carries real tide-
+window and grounding risk that one clearing by 8 metres doesn't, even
+though the hard pass/fail gate treats both as simply "compatible."
+Price-trend/forecast uncertainty (Module 1's job) is intentionally left
+out of this score and reserved for Module 7 (book now vs. wait) — that
+module answers "when," this one answers "which vessel and route,"
+and keeping them separate keeps each one's reasoning legible on its own
+rather than producing one opaque blended score.
+
+**Mechanics:** `SAFE_MARGIN_RATIO = 0.10` — at or above 10% spare
+clearance on the tightest of the three dimensions, no penalty is
+applied. Below that, cost is scaled upward linearly, up to
+`MAX_RISK_PENALTY = 0.15` (a 15% cost markup) at an exact-boundary fit
+(zero margin). An "unknown" dimension (a port missing a limit, per
+DECISIONS.md #14) is treated as maximum caution (full penalty) rather
+than assumed safe. An option that fails Module 4's hard gate outright is
+excluded from the ranking entirely, never scored — see the matrix
+endpoint for the full pass/fail picture. If a fixed `cargo_tonnes` is
+requested and exceeds a vessel's DWT, that vessel is excluded for that
+port too (this prices a single voyage, not a multi-voyage plan — see
+TODO.md).
+
+**Verified real result, not cherry-picked:** at VIZAG, Capesize's real
+margin is razor-thin — its 18.0m draft against Vizag's 18.1m limit is
+just 0.56% spare clearance, so it earns the full ~14.2% risk penalty
+(risk_multiplier ≈ 1.142). Even so, it still ranks #1 overall out of all
+12 compatible options (4 vessel classes x 3 origins), because the short
+Taboneo (Indonesia) route's raw cost advantage outweighs the penalty —
+a genuine tension the model surfaces rather than hides. At PARADIP,
+Capesize doesn't get a risk penalty at all — it's absent from the
+ranking entirely (9 = 3 vessels x 3 origins), because it fails Module
+4's physical gate there (DECISIONS.md #14), which is a stronger and
+more honest statement than a merely-penalized option would be.

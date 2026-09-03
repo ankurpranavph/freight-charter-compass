@@ -14,6 +14,7 @@ from app.db.connection import db_session
 from app.db.seed import run_seed
 from app.engine.compatibility import build_matrix, check_compatibility
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
+from app.engine.optimizer import rank_options
 from app.engine.voyage import calculate_voyage
 
 
@@ -178,3 +179,24 @@ def voyage_calculate(
     except KeyError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return result.as_dict()
+
+
+@app.get("/api/v1/optimize/{port_id}")
+def optimize(port_id: str, cargo_tonnes: float | None = Query(None, gt=0)):
+    """Module 6 (Optimize): rank every physically-compatible vessel x
+    origin-port combination for this destination by risk-adjusted cost
+    per tonne. Composes Module 4 (compatibility) and Module 5 (voyage
+    cost) — see app/engine/optimizer.py for the risk-margin methodology.
+    An incompatible vessel, or one too small for a given cargo_tonnes, is
+    simply absent from the ranking (see /api/v1/compatibility/matrix for
+    the full pass/fail picture). 404 if port_id is unknown."""
+    with db_session() as conn:
+        port_row = conn.execute(
+            "SELECT * FROM ports WHERE port_id = ?", (port_id.upper(),)
+        ).fetchone()
+        if port_row is None:
+            raise HTTPException(status_code=404, detail=f"Unknown port_id '{port_id}'")
+        vessels = [dict(r) for r in conn.execute("SELECT * FROM vessel_classes").fetchall()]
+        origins = [dict(r) for r in conn.execute("SELECT * FROM origin_ports").fetchall()]
+    ranked = rank_options(dict(port_row), vessels, origins, cargo_tonnes=cargo_tonnes)
+    return [{**opt.as_dict(), "rank": i + 1} for i, opt in enumerate(ranked)]

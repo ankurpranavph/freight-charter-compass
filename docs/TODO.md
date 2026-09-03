@@ -31,9 +31,10 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-None open. Hour 2–5 (Data pipeline) is fully done, including the real
-data ingestion that was blocking — see "Remaining" below for what's next
-(Hour 5–9, the forecast model).
+None open. Modules 1, 4, 5, and 6 (forecast, compatibility, voyage cost,
+cost optimizer) are all done and tested. Next up: Module 7 (book-now-vs-
+wait), the last piece of the "Decision engine" block — see "Remaining"
+below.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -91,10 +92,25 @@ data ingestion that was blocking — see "Remaining" below for what's next
       hire + fuel) — no port charges, ballast leg, or canal tolls yet.
       13 new tests (8 unit incl. hand-checked arithmetic, 5 against real
       seeded data). 48 total now.
-- [ ] **Decision engine (Hour 13–17):** `app/engine/optimizer.py` (Module
-      6 — risk-adjusted scoring), `app/engine/book_or_wait.py` (Module 7),
-      `/api/v1/recommend` and `/api/v1/decision/book-vs-wait` wired
-      end-to-end.
+- [x] **Cost optimizer (Module 6), done:**
+      `app/engine/optimizer.py` — ranks every physically-compatible
+      vessel x origin-port combination for a destination by risk-adjusted
+      cost per tonne, composing Module 4 (compatibility) and Module 5
+      (voyage cost) rather than recomputing them. "Risk" is deliberately
+      scoped to physical clearance margin at berth (a real number already
+      in Module 4's own data), not price-trend uncertainty — that's
+      reserved for Module 7. See DECISIONS.md #16 for the full mechanics
+      and the real verified result: at Vizag, Capesize's razor-thin 0.56%
+      draft margin earns it the full ~14.2% risk penalty yet it STILL
+      ranks #1 of 12 options (the short Taboneo route wins anyway); at
+      Paradip it's simply absent (9 = 3 vessels x 3 origins), excluded by
+      Module 4's hard gate rather than merely penalized. New endpoint
+      `GET /api/v1/optimize/{port_id}?cargo_tonnes=`. 12 new tests (9
+      unit, 3 against real seeded data). 60 total now.
+- [ ] **Book-now-vs-wait decision (Module 7):** `app/engine/book_or_wait.py`,
+      `/api/v1/decision/book-vs-wait` — uses Module 1's forecast to judge
+      whether current prices look favourable relative to trend. Last
+      module of the "Decision engine" block (Hour 13–17).
 - [ ] **Frontend shell (Hour 17–23):** React+Vite scaffold, Overview /
       Forecast / Recommendation pages wired to the live API.
 - [ ] **Frontend, rest of MVP (Hour 23–27):** Cost Optimization page, Data

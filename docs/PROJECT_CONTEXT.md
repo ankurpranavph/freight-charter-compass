@@ -117,10 +117,15 @@ not created speculatively upfront.
   — Module 5 (Simulate): one-way laden voyage distance/time/cost. 404 for
   an unknown vessel/origin/port. `cargo_tonnes` optional, defaults to the
   vessel's full DWT.
+- `GET /api/v1/optimize/{port_id}?cargo_tonnes=` — Module 6 (Optimize):
+  every physically-compatible vessel x origin-port combination for this
+  destination, ranked by risk-adjusted cost per tonne (risk = physical
+  clearance margin at berth, see DECISIONS.md #16). 404 for an unknown
+  port_id. An incompatible or too-small-for-cargo_tonnes option is simply
+  absent from the ranking, not flagged.
 
-Planned next (Module 6 onward): `/api/v1/recommend`,
-`/api/v1/decision/book-vs-wait`, `/api/v1/scenario/simulate`,
-`/api/v1/data-sources`.
+Planned next (Module 7 onward): `/api/v1/decision/book-vs-wait`,
+`/api/v1/scenario/simulate`, `/api/v1/data-sources`.
 
 ## Data sources — real vs. calculated vs. simulated
 
@@ -213,10 +218,25 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   3 ports.
 - 48 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
   forecast-engine + 11 compatibility-engine + 13 voyage-engine).
+- **Module 6 (Optimize) built:** `app/engine/optimizer.py` — ranks every
+  physically-compatible vessel x origin-port combination for a
+  destination by risk-adjusted cost per tonne, composing Module 4
+  (compatibility) and Module 5 (voyage cost). "Risk" is deliberately
+  scoped to physical clearance margin at berth (a real number already in
+  Module 4's own data, not price-trend uncertainty — that's Module 7's
+  job) — see DECISIONS.md #16 for the full mechanics. Real result: at
+  Vizag, Capesize's razor-thin 0.56% draft margin earns it the full
+  ~14.2% risk penalty yet it still ranks #1 of 12 options (the short
+  Taboneo route wins on raw cost anyway); at Paradip it's simply absent
+  (9 = 3 vessels x 3 origins), excluded by Module 4's hard gate rather
+  than merely penalized. `GET /api/v1/optimize/{port_id}`.
+- 60 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
+  forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
+  optimizer-engine).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and
-everything from Module 6 (cost optimizer) onward — see TODO.md for the
+everything from Module 7 (book-now-vs-wait) onward — see TODO.md for the
 exact next step.
 
 ## Important assumptions
