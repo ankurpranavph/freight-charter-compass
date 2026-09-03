@@ -30,3 +30,4 @@ data/processed/*
 .DS_Store
 Thumbs.db
 .pytest_cache/
+pytest-cache-files-*/
