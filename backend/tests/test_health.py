@@ -52,12 +52,32 @@ def test_vizag_confirmed_draft(client):
     assert port["max_draft_m"] == 18.1
 
 
-def test_paradip_flagged_unverified(client):
+def test_paradip_now_verified(client):
+    # Paradip was provisional at Hour 0-2; confirmed with real KICT terminal
+    # data (draft 17.1m, Capesize-capable to 165,000 DWT) during the Hour 2-5
+    # data-pipeline block. This test flips along with that fix.
     r = client.get("/api/v1/ports/PARADIP")
     port = r.json()
-    assert port["verified"] == 0, "Paradip figures are provisional and must stay flagged until Module 3"
+    assert port["verified"] == 1
+    assert port["max_draft_m"] == 17.1
 
 
 def test_unknown_port_404(client):
     r = client.get("/api/v1/ports/NOPE")
     assert r.status_code == 404
+
+
+def test_commodity_prices_seeded(client):
+    r = client.get("/api/v1/commodity-prices")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 6  # 3 months x 2 commodities, the real starter snapshot
+    commodities = {row["commodity"] for row in body}
+    assert commodities == {"coal_australian", "crude_oil_brent"}
+
+
+def test_commodity_prices_filter(client):
+    r = client.get("/api/v1/commodity-prices?commodity=coal_australian")
+    body = r.json()
+    assert len(body) == 3
+    assert all(row["commodity"] == "coal_australian" for row in body)

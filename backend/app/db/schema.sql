@@ -36,3 +36,24 @@ CREATE TABLE IF NOT EXISTS ports (
     source_url             TEXT,
     source_date            TEXT
 );
+
+-- Added in the data-pipeline block (Hour 2-5).
+CREATE TABLE IF NOT EXISTS commodity_price_history (
+    date        TEXT NOT NULL,        -- ISO date, first-of-month for monthly series
+    commodity   TEXT NOT NULL,        -- 'coal_australian' | 'crude_oil_brent'
+    price_usd   REAL NOT NULL,        -- $/tonne (coal) or $/bbl (oil) — see unit per commodity
+    unit        TEXT NOT NULL,        -- 'usd_per_tonne' | 'usd_per_bbl'
+    source      TEXT,
+    source_url  TEXT,
+    PRIMARY KEY (date, commodity)
+);
+
+CREATE TABLE IF NOT EXISTS port_traffic_history (
+    month       TEXT NOT NULL,        -- ISO date, first-of-month
+    port_id     TEXT NOT NULL REFERENCES ports(port_id),
+    commodity   TEXT NOT NULL,
+    volume_tonnes REAL NOT NULL,
+    source      TEXT,
+    source_url  TEXT,
+    PRIMARY KEY (month, port_id, commodity)
+);

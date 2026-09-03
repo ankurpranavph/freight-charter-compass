@@ -1,0 +1,7 @@
+date,commodity,price_usd,unit,source,source_url
+2026-05-01,coal_australian,136.9,usd_per_tonne,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf
+2026-06-01,coal_australian,138.5,usd_per_tonne,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf
+2026-07-01,coal_australian,131.9,usd_per_tonne,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf
+2026-05-01,crude_oil_brent,107.5,usd_per_bbl,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf
+2026-06-01,crude_oil_brent,85.4,usd_per_bbl,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf
+2026-07-01,crude_oil_brent,83.4,usd_per_bbl,World Bank Commodity Markets (Pink Sheet) - August 2026 edition,https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-August-2026.pdf

@@ -133,19 +133,33 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
 
 ## Current implementation status
 
-**Done (commit `01-initial-architecture`):**
+**Done (commit `01-initial-architecture` + Hour 2-5 data-pipeline commits):**
 - Repo skeleton, `.gitignore`, folder structure.
-- `vessel_classes` + `ports` schema, seeded with 4 vessel classes
-  (Handysize/Supramax/Panamax/Capesize, industry-typical figures, flagged as
-  assumptions) and 3 ports (Visakhapatnam — confirmed 18.1m coal-berth
-  draft; Dhamra — confirmed 18m draft; Paradip — provisional, flagged
-  unverified pending official berth-table extraction).
+- `vessel_classes`, `ports`, `commodity_price_history`, `port_traffic_history`
+  schema, seeded with 4 vessel classes (industry-typical, flagged as
+  assumptions) and 3 ports — all three now **verified: true**:
+  Visakhapatnam (18.1m coal-berth draft), Dhamra (18m draft, 207,000 DWT
+  vessel record), Paradip (17.1m draft via the Kalinga International Coal
+  Terminal, confirmed Capesize-capable to 165,000 DWT — two independent
+  sources).
+- A real (if thin — 3 months) commodity-price starter dataset: Coal
+  Australian + Crude oil Brent, hand-extracted from the actual World Bank
+  Pink Sheet PDF via WebFetch and checked into `commodity_prices_seed.csv`.
+- `data_pipeline/ingest_worldbank.py` — a full Pink Sheet history parser,
+  written and unit-tested against a synthetic file, but **not yet
+  execution-tested against the real file** — Claude's sandboxes cannot
+  reach `thedocs.worldbank.org` (org network policy blocks it from both
+  the cloud sandbox and the device-bridge shell). Needs the user to run it
+  once from a normal terminal — see TODO.md "Current task".
 - FastAPI app with `/health`, `/api/v1/vessels`, `/api/v1/ports`,
-  `/api/v1/ports/{id}`, seeded on startup via a lifespan handler.
-- 6 passing pytest smoke tests.
+  `/api/v1/ports/{id}`, `/api/v1/commodity-prices`, seeded on startup via a
+  lifespan handler.
+- 12 passing pytest tests (8 API smoke tests + 4 ingestion-parser tests).
 
-**Not yet built:** everything from Module 4 (compatibility engine) onward —
-see TODO.md for the exact next step.
+**Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
+covers the two series we need), Indian port traffic history, and
+everything from Module 4 (compatibility engine) onward — see TODO.md for
+the exact next step.
 
 ## Important assumptions
 

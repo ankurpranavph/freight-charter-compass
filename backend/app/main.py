@@ -56,3 +56,21 @@ def get_port(port_id: str):
         if row is None:
             raise HTTPException(status_code=404, detail=f"Unknown port_id '{port_id}'")
         return dict(row)
+
+
+@app.get("/api/v1/commodity-prices")
+def list_commodity_prices(commodity: str | None = None):
+    """Real commodity price history (World Bank Pink Sheet — see
+    docs/PROJECT_CONTEXT.md for the real/calculated/simulated breakdown).
+    Optional ?commodity=coal_australian|crude_oil_brent filter."""
+    with db_session() as conn:
+        if commodity:
+            rows = conn.execute(
+                "SELECT * FROM commodity_price_history WHERE commodity = ? ORDER BY date",
+                (commodity,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM commodity_price_history ORDER BY commodity, date"
+            ).fetchall()
+        return [dict(r) for r in rows]

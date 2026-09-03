@@ -30,17 +30,42 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-None in progress — Hour 0–2 (Setup) block is complete. Next session/step
-starts Hour 2–5 (Data pipeline) below.
+**Blocking, needs you (not Claude) to run it once:** `ingest_worldbank.py`
+downloads and parses the full World Bank Pink Sheet history but has NOT
+been execution-tested against the real file — Claude's sandboxes cannot
+reach `thedocs.worldbank.org` (confirmed: direct curl fails from both the
+cloud sandbox and this device-bridge shell, org network policy). Run it
+yourself:
+```
+cd backend
+python -m data_pipeline.ingest_worldbank
+```
+It'll either succeed and write `data_pipeline/processed/commodity_prices_worldbank.csv`
+(then re-run `python -m app.db.seed` to load the full history in place of
+the 3-month starter snapshot), or fail with a specific error about the
+file's layout not matching — paste that error back and we'll fix the real
+mismatch. This needs to happen before Hour 5–9 (forecast model) can use
+real history instead of 3 real-but-thin data points.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
-- [ ] **Data pipeline (Hour 2–5):** ingestion scripts for World Bank Pink
-      Sheet, FRED (PCOALAUUSDM), RBA Index of Commodity Prices; extract the
-      real berth-wise draft/LOA/beam table for Paradip from the official
-      PDF/page and flip `verified: false` → `true` once confirmed; add
-      `commodity_price_history` and `port_traffic_history` tables to
-      `schema.sql`.
+- [x] **Data pipeline (Hour 2–5), partial:**
+  - [x] `commodity_price_history` + `port_traffic_history` tables added to `schema.sql`
+  - [x] Paradip's real berth data confirmed (Kalinga International Coal
+        Terminal — 17.1m draft, Capesize-capable to 165,000 DWT, two
+        independent sources) — `verified: false` → `true`
+  - [x] `ingest_worldbank.py` written (World Bank Pink Sheet parser, dynamic
+        header detection, 4 passing tests against a synthetic file) — not
+        yet run against the real file, see "Current task" above
+  - [x] Real starter snapshot seeded: 3 months x 2 commodities (coal
+        Australian, crude oil Brent) hand-extracted from the actual August
+        2026 Pink Sheet PDF via WebFetch — genuinely real, just thin
+  - [ ] FRED (PCOALAUUSDM) and RBA Index of Commodity Prices ingestion —
+        deprioritized this block (World Bank alone covers both series we
+        need); revisit only if the coking-coal-specific RBA sub-index
+        becomes worth the effort later
+  - [ ] Indian port traffic history (shipmin.gov.in monthly PDFs /
+        data.gov.in) into `port_traffic_history` — not started
 - [ ] **Forecast model (Hour 5–9):** baseline (seasonal-naive) + SARIMAX,
       time-series-aware split, MAE/RMSE/MAPE reported, artifacts saved to
       `backend/ml/artifacts/`.

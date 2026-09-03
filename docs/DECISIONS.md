@@ -121,3 +121,49 @@ alongside it to current releases rather than leaving them stale.
 the new pins in a clean sandbox first. **Verified by the user:** clean
 `pip install` + all 6 tests passing on their own machine, in their own
 VS Code terminal, after deleting and recreating `.venv`.
+
+## 10. Data ingestion scripts written but not execution-tested by Claude
+
+**Decision:** `ingest_worldbank.py` is real, defensively-written code
+(dynamic header-row detection instead of hardcoded row numbers, clear
+error messages, unit-tested against a synthetic file matching the
+documented Pink Sheet layout) — but it has not been run against the real
+`thedocs.worldbank.org` file by Claude.
+**Why:** confirmed by direct test — raw `curl` to `thedocs.worldbank.org`,
+`fred.stlouisfed.org`, `rba.gov.au`, and several Indian port-authority
+domains all fail to connect from both of Claude's execution environments
+(the cloud sandbox and this project's device-bridge shell), consistent
+with an organisation-level network egress policy that allows package
+registries (PyPI, npm) but not arbitrary external sites. Claude's
+`WebFetch` tool (a separate, Anthropic-hosted fetch path) can reach these
+sites for HTML/PDF text — which is how the real Paradip port data and the
+real 3-month commodity-price starter snapshot were obtained — but it
+cannot hand back raw binary (XLSX) content for a script to parse.
+**Consequence for how this project gets built:** any ingestion step that
+needs the actual downloadable data file (not just text Claude can read
+and transcribe) has to be run once by the user, in their own terminal,
+which has normal unrestricted internet. This is a one-time step per data
+refresh, not a demo-time dependency — the architecture already called for
+ingest-once-cache-locally rather than live-fetching at request time, so
+this constraint doesn't change the design, just who runs the ingestion
+step during development.
+**Alternative considered:** have Claude fabricate/estimate the full
+historical series instead of leaving it to a real download. Rejected
+outright — this project's entire credibility argument to SIH judges rests
+on never presenting simulated numbers as real; a full synthetic 60-year
+coal-price history dressed up as "World Bank data" would be exactly the
+failure mode the Data Sources & Assumptions page exists to prevent.
+
+## 11. Paradip's port data closed out with two independent real sources
+
+**Decision:** Paradip flipped from `verified: false` (Hour 0-2 placeholder)
+to `verified: true`, using the Kalinga International Coal Terminal (KICT)
+— confirmed via a CareRatings credit-rating report (port-level draft
+17.1m) and the terminal operator's own capability page (12 MMTPA, 165,000
+DWT Capesize-capable, commenced January 2022) — rather than the official
+Paradip Port Trust berth-table PDF, which returned a 404 when re-checked.
+**Why this is still labelled honestly:** LOA/beam (290m/45m) are *inferred*
+from the stated 165,000 DWT Capesize-class capability, not read off an
+independent berth dimension table — `ports.json`'s `berth_reference` field
+says so explicitly, so a future session (or a judge reading the Data
+Sources page) doesn't mistake an inference for a direct citation.
