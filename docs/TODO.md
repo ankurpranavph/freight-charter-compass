@@ -78,15 +78,19 @@ data ingestion that was blocking — see "Remaining" below for what's next
       vessel classes fit all 3 ports. 11 new tests (6 unit against
       synthetic data, 5 against the real seeded vessel/port data) — 35
       total now.
-- [ ] **Voyage cost calculator (Module 5), Hour 9–13 remainder:**
-      `app/engine/voyage.py` — distance via a small fixed set of waypoints
-      (not a general routing system, see DECISIONS.md #8), fuel cost,
-      total voyage cost. Needs real research before coding: origin port
-      coordinates (Australia/Indonesia/South Africa coal-loading ports),
-      a real reference bunker fuel price (flagged ASSUMPTION with a
-      source/date, not live), and typical time-charter day rates per
-      vessel class (currently `opex_usd_day: null` in `vessels.json`,
-      deferred here on purpose). `/api/v1/voyage/calculate` endpoint.
+- [x] **Voyage cost calculator (Module 5), done:**
+      `app/engine/voyage.py` — great-circle distance via hand-chosen,
+      sourced-geography waypoints (not a licensed routing product, see
+      DECISIONS.md #15), fuel cost, time-charter hire. Real research
+      done before coding: 3 origin ports (Newcastle AU, Richards Bay ZA,
+      Taboneo ID) with cross-checked coordinates, real bunker price
+      ($856/t VLSFO Singapore, 2026-09-02) and time-charter day rates by
+      vessel class (HandyBulk, 2026-09-03) — both cited ASSUMPTIONs, not
+      live. `GET /api/v1/origin-ports` + `/api/v1/voyage/calculate`.
+      Known, documented scope limit: one-way laden voyage only (charter
+      hire + fuel) — no port charges, ballast leg, or canal tolls yet.
+      13 new tests (8 unit incl. hand-checked arithmetic, 5 against real
+      seeded data). 48 total now.
 - [ ] **Decision engine (Hour 13–17):** `app/engine/optimizer.py` (Module
       6 — risk-adjusted scoring), `app/engine/book_or_wait.py` (Module 7),
       `/api/v1/recommend` and `/api/v1/decision/book-vs-wait` wired

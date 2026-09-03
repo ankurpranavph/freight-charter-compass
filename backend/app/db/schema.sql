@@ -57,3 +57,17 @@ CREATE TABLE IF NOT EXISTS port_traffic_history (
     source_url  TEXT,
     PRIMARY KEY (month, port_id, commodity)
 );
+
+-- Added in the voyage-calculator block (Hour 9-13, Module 5). Overseas
+-- coal-loading ports - the origin side of every voyage this app costs out.
+-- Fixed small set (Australia/Indonesia/South Africa), not a general port
+-- database - see DECISIONS.md #8.
+CREATE TABLE IF NOT EXISTS origin_ports (
+    origin_id   TEXT PRIMARY KEY,    -- e.g. NEWCASTLE_AU
+    name        TEXT NOT NULL,
+    country     TEXT NOT NULL,
+    lat         REAL NOT NULL,
+    lon         REAL NOT NULL,
+    source      TEXT,
+    source_url  TEXT
+);

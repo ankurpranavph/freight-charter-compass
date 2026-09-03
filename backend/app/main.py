@@ -14,6 +14,7 @@ from app.db.connection import db_session
 from app.db.seed import run_seed
 from app.engine.compatibility import build_matrix, check_compatibility
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
+from app.engine.voyage import calculate_voyage
 
 
 @asynccontextmanager
@@ -129,3 +130,51 @@ def compatibility_matrix():
         vessels = [dict(r) for r in conn.execute("SELECT * FROM vessel_classes").fetchall()]
         ports = [dict(r) for r in conn.execute("SELECT * FROM ports").fetchall()]
     return build_matrix(vessels, ports)
+
+
+@app.get("/api/v1/origin-ports")
+def list_origin_ports():
+    """The fixed small set of overseas coal-loading ports this app costs
+    voyages from - see docs/DECISIONS.md #8 for why this isn't a general
+    port database."""
+    with db_session() as conn:
+        rows = conn.execute("SELECT * FROM origin_ports").fetchall()
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/v1/voyage/calculate")
+def voyage_calculate(
+    vessel_type: str,
+    origin_id: str,
+    port_id: str,
+    cargo_tonnes: float | None = Query(None, gt=0),
+):
+    """Module 5 (Simulate): one-way laden voyage cost for a vessel class
+    from an overseas loading port to an East Coast India port. Distance is
+    CALCULATED (great-circle via hand-chosen waypoints); bunker price and
+    time-charter rate are real, cited, point-in-time ASSUMPTIONs, not live
+    feeds - see app/engine/voyage.py and the response's `assumptions`
+    block. `cargo_tonnes` defaults to the vessel's full DWT."""
+    with db_session() as conn:
+        vessel_row = conn.execute(
+            "SELECT * FROM vessel_classes WHERE vessel_type = ?", (vessel_type,)
+        ).fetchone()
+        origin_row = conn.execute(
+            "SELECT * FROM origin_ports WHERE origin_id = ?", (origin_id.upper(),)
+        ).fetchone()
+        port_row = conn.execute(
+            "SELECT * FROM ports WHERE port_id = ?", (port_id.upper(),)
+        ).fetchone()
+    if vessel_row is None:
+        raise HTTPException(status_code=404, detail=f"Unknown vessel_type '{vessel_type}'")
+    if origin_row is None:
+        raise HTTPException(status_code=404, detail=f"Unknown origin_id '{origin_id}'")
+    if port_row is None:
+        raise HTTPException(status_code=404, detail=f"Unknown port_id '{port_id}'")
+    try:
+        result = calculate_voyage(
+            dict(vessel_row), dict(origin_row), dict(port_row), cargo_tonnes=cargo_tonnes
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return result.as_dict()

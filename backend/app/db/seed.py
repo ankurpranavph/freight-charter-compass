@@ -59,6 +59,23 @@ def seed_ports(conn) -> int:
     return len(rows)
 
 
+def seed_origin_ports(conn) -> int:
+    rows = json.loads((DATA_DIR / "origin_ports.json").read_text())
+    for r in rows:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO origin_ports
+                (origin_id, name, country, lat, lon, source, source_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                r["origin_id"], r["name"], r["country"], r["lat"], r["lon"],
+                r.get("source"), r.get("source_url"),
+            ),
+        )
+    return len(rows)
+
+
 def seed_commodity_prices(conn) -> int:
     """
     Loads whichever commodity-price CSV is available, preferring the full
@@ -95,10 +112,12 @@ def run_seed() -> None:
     with db_session() as conn:
         n_vessels = seed_vessels(conn)
         n_ports = seed_ports(conn)
+        n_origin_ports = seed_origin_ports(conn)
         n_prices, price_source = seed_commodity_prices(conn)
     print(
         f"Seeded {n_vessels} vessel classes, {n_ports} ports, "
-        f"{n_prices} commodity-price rows (from {price_source.name})."
+        f"{n_origin_ports} origin ports, {n_prices} commodity-price rows "
+        f"(from {price_source.name})."
     )
 
 

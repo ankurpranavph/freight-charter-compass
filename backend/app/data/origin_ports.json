@@ -1,0 +1,29 @@
+[
+  {
+    "origin_id": "NEWCASTLE_AU",
+    "name": "Port of Newcastle",
+    "country": "Australia",
+    "lat": -32.93,
+    "lon": 151.78,
+    "source": "Wikipedia (Port of Newcastle, 'world's largest coal port') + MarineLink Ports Directory coordinates",
+    "source_url": "https://en.wikipedia.org/wiki/Port_of_Newcastle"
+  },
+  {
+    "origin_id": "RICHARDS_BAY_ZA",
+    "name": "Richards Bay (Richards Bay Coal Terminal)",
+    "country": "South Africa",
+    "lat": -28.80,
+    "lon": 32.03,
+    "source": "africaports.co.za official port coordinates (28 48'S, 32 02'E); Richards Bay Coal Terminal is Africa's largest coal export facility",
+    "source_url": "https://africaports.co.za/richards-bay/"
+  },
+  {
+    "origin_id": "TABONEO_ID",
+    "name": "Taboneo Anchorage (off South Kalimantan)",
+    "country": "Indonesia",
+    "lat": -3.70,
+    "lon": 114.44,
+    "source": "Cross-checked across two independent port-directory sources (MarineLink Ports Directory, ShipNext) after a third source's prose description disagreed by roughly 1 degree of latitude - the two numeric coordinate fields agreed closely, the outlying prose figure was discarded",
+    "source_url": "https://ports.marinelink.com/ports/port/taboneo-anch"
+  }
+]

@@ -88,8 +88,10 @@ Two tables exist so far — `backend/app/db/schema.sql`:
   max_draft_m, max_loa_m, max_beam_m, coal_handling, berth_reference,
   annual_capacity_mtpa, verified, source, source_url, source_date
 
-More tables (commodity_price_history, freight_index_history,
-port_traffic_history, routes_cache, voyage_estimates, scenario_log,
+Plus (added Hour 2-5/9-13 as their owning modules were built):
+`commodity_price_history`, `port_traffic_history` (schema in place, not
+yet populated), `origin_ports` (the 3 fixed overseas coal-loading ports).
+Remaining planned tables (routes_cache, voyage_estimates, scenario_log,
 assumptions_registry) are added when the module that owns them is built —
 not created speculatively upfront.
 
@@ -109,10 +111,16 @@ not created speculatively upfront.
   rejection reason(s). 404 for an unknown vessel_type or port_id.
 - `GET /api/v1/compatibility/matrix` — every vessel class x every seeded
   port (currently 12 combinations), same format.
+- `GET /api/v1/origin-ports` — the 3 fixed overseas coal-loading ports
+  (Australia/South Africa/Indonesia).
+- `GET /api/v1/voyage/calculate?vessel_type=&origin_id=&port_id=&cargo_tonnes=`
+  — Module 5 (Simulate): one-way laden voyage distance/time/cost. 404 for
+  an unknown vessel/origin/port. `cargo_tonnes` optional, defaults to the
+  vessel's full DWT.
 
-Planned next (Module 5 onward): `/api/v1/voyage/calculate`,
-`/api/v1/recommend`, `/api/v1/decision/book-vs-wait`,
-`/api/v1/scenario/simulate`, `/api/v1/data-sources`.
+Planned next (Module 6 onward): `/api/v1/recommend`,
+`/api/v1/decision/book-vs-wait`, `/api/v1/scenario/simulate`,
+`/api/v1/data-sources`.
 
 ## Data sources — real vs. calculated vs. simulated
 
@@ -192,11 +200,24 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   /api/v1/compatibility/check` and `/matrix`.
 - 35 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
   forecast-engine + 11 compatibility-engine).
+- **Module 5 (Simulate) built:** `app/engine/voyage.py` — one-way laden
+  voyage cost (great-circle distance via hand-chosen, sourced-geography
+  waypoints; fuel cost; time-charter hire) for the 3 origin ports x 3
+  destination ports. Bunker price and time-charter rates are real, cited,
+  dated snapshots (2026-09-02/03), not live — see DECISIONS.md #15 for
+  full sourcing and the real sanity-check against trade-press distance
+  figures. `GET /api/v1/origin-ports` + `/api/v1/voyage/calculate`. Real
+  result: cost/tonne correctly falls with vessel size (economies of
+  scale), and directly connects to Module 4's finding — the cheapest
+  vessel per tonne (Capesize) is also the one that can't call at 2 of the
+  3 ports.
+- 48 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
+  forecast-engine + 11 compatibility-engine + 13 voyage-engine).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and
-everything from Module 5 (voyage cost calculator) onward — see TODO.md
-for the exact next step.
+everything from Module 6 (cost optimizer) onward — see TODO.md for the
+exact next step.
 
 ## Important assumptions
 
