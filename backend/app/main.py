@@ -8,9 +8,11 @@ grows by import, not by rewrite, as app/api/* fills in.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Query
 from app.db.connection import db_session
 from app.db.seed import run_seed
+from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 
 
 @asynccontextmanager
@@ -74,3 +76,25 @@ def list_commodity_prices(commodity: str | None = None):
                 "SELECT * FROM commodity_price_history ORDER BY commodity, date"
             ).fetchall()
         return [dict(r) for r in rows]
+
+
+@app.get("/api/v1/forecast/{commodity}")
+def get_forecast(commodity: str, horizon: int = Query(DEFAULT_HORIZON, ge=1, le=24)):
+    """Module 1 (Predict): freight-relevant commodity price forecast.
+    SARIMAX vs. a seasonal-naive baseline, evaluated on a holdout slice of
+    real World Bank Pink Sheet history. See app/engine/forecast.py for
+    methodology and docs/PROJECT_CONTEXT.md for the real/calculated/
+    simulated data-honesty breakdown. `horizon` = months ahead (1-24)."""
+    with db_session() as conn:
+        rows = conn.execute(
+            "SELECT date, price_usd FROM commodity_price_history WHERE commodity = ? ORDER BY date",
+            (commodity,),
+        ).fetchall()
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"Unknown or empty commodity '{commodity}'")
+    df = pd.DataFrame([dict(r) for r in rows])
+    try:
+        result = build_forecast(commodity, df, horizon=horizon)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return result.as_dict()

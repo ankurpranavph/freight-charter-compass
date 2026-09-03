@@ -68,10 +68,17 @@ def test_unknown_port_404(client):
 
 
 def test_commodity_prices_seeded(client):
+    # Whether this seeds the 6-row starter snapshot or the full ~1480-row
+    # World Bank history depends on whether data_pipeline/processed/
+    # commodity_prices_worldbank.csv exists locally (it's gitignored --
+    # present once you've run ingest_worldbank.py for real, absent on a
+    # fresh clone) -- seed.py prefers it when present, per its docstring.
+    # Both are correct outcomes; assert the invariant that holds either
+    # way rather than a fixed row count.
     r = client.get("/api/v1/commodity-prices")
     assert r.status_code == 200
     body = r.json()
-    assert len(body) == 6  # 3 months x 2 commodities, the real starter snapshot
+    assert len(body) >= 6  # at least the 3-month starter snapshot
     commodities = {row["commodity"] for row in body}
     assert commodities == {"coal_australian", "crude_oil_brent"}
 
@@ -79,5 +86,30 @@ def test_commodity_prices_seeded(client):
 def test_commodity_prices_filter(client):
     r = client.get("/api/v1/commodity-prices?commodity=coal_australian")
     body = r.json()
-    assert len(body) == 3
+    assert len(body) >= 3  # at least the 3-month starter snapshot
     assert all(row["commodity"] == "coal_australian" for row in body)
+
+
+def test_forecast_unknown_commodity_404(client):
+    r = client.get("/api/v1/forecast/not_a_real_commodity")
+    assert r.status_code == 404
+
+
+def test_forecast_insufficient_data_with_starter_snapshot(client):
+    # This test DB only has the 3-month starter snapshot before you run
+    # ingest_worldbank.py's real download (the full 1480-row World Bank
+    # history lives in data_pipeline/processed/, gitignored) -- so this
+    # exercises the "not enough history yet" contract, not a real SARIMAX
+    # fit. See test_forecast.py for the full model-fitting path against a
+    # synthetic long series, and try GET /api/v1/forecast/coal_australian
+    # yourself once the real history is loaded -- it'll return status: "ok".
+    r = client.get("/api/v1/forecast/coal_australian")
+    assert r.status_code == 200
+    body = r.json()
+    if body["status"] == "insufficient_data":
+        assert body["forecast"] == []
+    else:
+        # if you've already run the real ingestion, the full history is
+        # loaded and this legitimately returns a real forecast instead.
+        assert body["status"] == "ok"
+        assert len(body["forecast"]) > 0

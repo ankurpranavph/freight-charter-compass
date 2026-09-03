@@ -57,9 +57,18 @@ data ingestion that was blocking — see "Remaining" below for what's next
         becomes worth the effort later
   - [ ] Indian port traffic history (shipmin.gov.in monthly PDFs /
         data.gov.in) into `port_traffic_history` — not started
-- [ ] **Forecast model (Hour 5–9):** baseline (seasonal-naive) + SARIMAX,
-      time-series-aware split, MAE/RMSE/MAPE reported, artifacts saved to
-      `backend/ml/artifacts/`.
+- [x] **Forecast model (Hour 5–9), done:**
+      `app/engine/forecast.py` — seasonal-naive baseline + SARIMAX (small
+      curated AIC grid search, not exhaustive auto-ARIMA), chronological
+      train/holdout split, MAE/RMSE/MAPE for both. Fit-on-request with an
+      in-memory cache, not a separate training script/pickled artifact —
+      see DECISIONS.md #13. New endpoint `GET
+      /api/v1/forecast/{commodity}?horizon=1..24`. On your real ingested
+      data: SARIMAX beats the seasonal-naive baseline on both commodities
+      (coal MAE 20.4 vs 26.2; oil MAE 16.5 vs 19.3 — see DECISIONS.md #13
+      for full numbers). 24 total tests now (10 API smoke tests including
+      2 new forecast-endpoint tests, 7 ingestion-parser tests, 7
+      forecast-engine tests) — `pytest tests/ -v` to confirm.
 - [ ] **Backend core (Hour 9–13):** `app/engine/compatibility.py` (Module
       4 — draft/LOA/beam check with explicit rejection reasons),
       `app/engine/voyage.py` (Module 5 — distance via waypoints, fuel,
@@ -83,6 +92,19 @@ data ingestion that was blocking — see "Remaining" below for what's next
 ## Bugs
 
 None currently open.
+
+**Fixed this block:** `test_commodity_prices_seeded`/`test_commodity_prices_filter`
+hardcoded the 3-month starter's exact row counts (6, 3). Once the real
+World Bank history was ingested on this machine, `data_pipeline/processed/
+commodity_prices_worldbank.csv` persisted locally (it's gitignored, not a
+one-time thing that goes away) and `seed.py` correctly started preferring
+it over the starter every time — so the DB now always seeds ~1480 rows
+here, and those two tests failed on an assumption that stopped being true,
+not on a real app bug. Fixed to assert the invariant that holds either
+way (>= 6 / >= 3, both commodities present) instead of an exact count,
+since a fresh clone (no processed CSV yet) and this machine (processed CSV
+present) are both correct states for the same code — confirmed passing on
+this machine (24/24) after the fix.
 
 ## Priority / blockers
 

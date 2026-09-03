@@ -203,3 +203,55 @@ both continuous through the present month.
 documented file layout is current: get a raw grid dump of the actual file
 (via the user, since Claude can't open XLSX binaries itself) before writing
 the parser, not after it fails.
+
+## 13. Forecast model: fit-on-request with in-memory caching, no training script or pickled artifact
+
+**Decision:** `app/engine/forecast.py` fits SARIMAX when `GET
+/api/v1/forecast/{commodity}` is first called for a given
+(commodity, horizon), then caches the result in a module-level dict for
+the life of the running process. There is no `backend/ml/` training
+script and no pickled model file.
+**Alternatives considered:** a separate offline training script that
+writes pickled `statsmodels` result objects to disk, loaded at API
+startup (this was the original architecture-proposal sketch).
+**Why rejected:** pickled `statsmodels`/`scipy` objects are version-
+fragile — a `pip install -U` on either library can make an old pickle
+unloadable or silently wrong, which is a bad failure mode to discover
+during a demo. Fitting SARIMAX on real data takes 4-6 seconds per
+commodity (measured against the full 1480-row real series, see below) —
+too slow for a page needing to feel instant, but entirely fine to pay
+once per commodity per server run, which the in-memory cache guarantees.
+This also keeps the "ingest once, compute at request time, no live
+external calls during a demo" architecture (PROJECT_CONTEXT.md) intact
+without adding artifact-management complexity a 1-2 person team doesn't
+need. **Revisit trigger:** if the forecast page needs to support many
+different horizons interactively such that re-fitting on every distinct
+horizon becomes a real wait, switch to fitting once on the full series
+and slicing `get_forecast(steps=max_horizon)` down to whatever horizon
+is requested, rather than one fit per horizon value.
+
+**Order selection:** a small curated grid of 5 (order, seasonal_order)
+pairs, picked by AIC on the training split — not exhaustive auto-ARIMA
+(`pmdarima` isn't a dependency). The SAME selected order is refit on the
+full series for the deployed forecast; the evaluation-time model and the
+deployed model are never allowed to silently differ.
+
+**Real result, on the actual ingested data (not a synthetic sanity
+check):** both commodities independently selected order `(1,1,1)` /
+seasonal `(0,1,1,12)`. SARIMAX beat the seasonal-naive baseline on the
+last-12-months holdout for both:
+- Coal Australian (680 months, 1970-2026): MAE 20.44 vs. baseline 26.23;
+  MAPE 15.72% vs. baseline 21.49%.
+- Crude oil Brent (800 months, 1960-2026): MAE 16.50 vs. baseline 19.32;
+  MAPE 16.67% vs. baseline 21.29%.
+
+This is a genuine, holdout-measured improvement over the baseline a judge
+would expect us to compare against — not a claim, a number anyone can
+reproduce by calling the endpoint.
+
+**Metrics library:** hand-rolled MAE/RMSE/MAPE with `numpy`, not
+`scikit-learn` (the original architecture proposal listed scikit-learn
+for this). Three summary statistics don't justify an extra dependency
+and its own Python 3.14 wheel-compatibility risk — `statsmodels` and
+`scipy` already needed checking (see requirements.txt; both confirmed
+`cp314-win_amd64` wheels on PyPI before pinning `statsmodels==0.15.0`).

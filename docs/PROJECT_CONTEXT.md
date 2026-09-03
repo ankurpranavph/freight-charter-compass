@@ -73,8 +73,10 @@ arithmetic at request time (no live external calls during a demo).
 - Charts: Recharts. Map: React-Leaflet. (not yet built)
 - Database: SQLite file (`backend/freight.db`, gitignored, rebuilt from seed
   JSON on every app startup).
-- ML: statsmodels (SARIMAX), pandas, numpy, scikit-learn for metrics.
-  (not yet built)
+- ML: statsmodels (SARIMAX) + numpy for hand-rolled MAE/RMSE/MAPE — no
+  scikit-learn dependency, see DECISIONS.md #13. Fit-on-request with an
+  in-memory cache (`app/engine/forecast.py`), not a separate offline
+  training script.
 
 ## Database schema (current)
 
@@ -97,9 +99,14 @@ not created speculatively upfront.
 - `GET /api/v1/vessels` — all 4 vessel classes
 - `GET /api/v1/ports` — all seeded ports
 - `GET /api/v1/ports/{port_id}` — one port, 404 if unknown
+- `GET /api/v1/commodity-prices` — real price history, optional `?commodity=` filter
+- `GET /api/v1/forecast/{commodity}?horizon=1..24` — Module 1 (Predict):
+  SARIMAX vs. seasonal-naive baseline, evaluated on a real holdout. 404 for
+  an unknown/empty commodity; `status: "insufficient_data"` (not an error)
+  if fewer than 30 months of history are loaded for that commodity.
 
 Planned next (Module 4 onward): `/api/v1/compatibility/check`,
-`/api/v1/forecast/freight`, `/api/v1/voyage/calculate`, `/api/v1/recommend`,
+`/api/v1/voyage/calculate`, `/api/v1/recommend`,
 `/api/v1/decision/book-vs-wait`, `/api/v1/scenario/simulate`,
 `/api/v1/data-sources`.
 
@@ -159,6 +166,17 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   lifespan handler.
 - 15 passing pytest tests (8 API smoke tests + 7 ingestion-parser tests),
   confirmed by the user on their own machine.
+
+- **Module 1 (Predict) built:** `app/engine/forecast.py` — seasonal-naive
+  baseline + SARIMAX (small curated AIC grid search over 5 candidate
+  orders), chronological train/holdout split, MAE/RMSE/MAPE for both.
+  `GET /api/v1/forecast/{commodity}`. On the real ingested data, SARIMAX
+  beats the baseline on both commodities — Coal Australian MAE 20.4 vs.
+  26.2 (MAPE 15.7% vs. 21.5%), Crude oil Brent MAE 16.5 vs. 19.3 (MAPE
+  16.7% vs. 21.3%) — see DECISIONS.md #13 for the full numbers and
+  methodology.
+- 24 passing pytest tests (10 API smoke tests + 7 ingestion-parser tests +
+  7 forecast-engine tests).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and
