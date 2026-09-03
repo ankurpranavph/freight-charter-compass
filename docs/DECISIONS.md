@@ -105,3 +105,19 @@ Australia/Indonesia/South Africa × the named East Coast ports). Reasoning
 for each is in the architecture proposal from the planning conversation;
 repeated here only if a future session is tempted to add one of these back
 in without re-deriving why it was cut.
+
+## 9. Dependency pins bumped for Python 3.14 (confirmed by the user)
+
+**Decision:** `fastapi==0.141.1`, `uvicorn==0.52.4`, `pydantic==2.13.5`
+(from the original `0.115.0` / `0.30.6` / `2.9.2`).
+**Why:** the user's machine runs Python 3.14. The original `pydantic`
+pin resolved to `pydantic-core 2.23.4`, which has no `cp314` wheel on
+PyPI — `pip install` tried to build it from source and failed with no
+Rust toolchain available. Verified on PyPI before changing anything:
+`pydantic-core` first shipped a `cp314-win_amd64` wheel at version
+`2.48.0`, which ships with `pydantic>=2.12`. Bumped `fastapi`/`uvicorn`
+alongside it to current releases rather than leaving them stale.
+**Verified before handing back to the user:** re-ran all 6 tests against
+the new pins in a clean sandbox first. **Verified by the user:** clean
+`pip install` + all 6 tests passing on their own machine, in their own
+VS Code terminal, after deleting and recreating `.venv`.

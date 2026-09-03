@@ -19,6 +19,14 @@ punch list; it should always reflect reality, not the original plan.
 - [x] Fixed a real environment issue: SQLite `disk I/O error` on this
       bridge's mounted folder — fixed via `journal_mode=MEMORY` +
       `synchronous=OFF` in `app/db/connection.py`
+- [x] Fixed a real dependency issue: original pins (pydantic 2.9.2 /
+      fastapi 0.115.0 / uvicorn 0.30.6) predate Python 3.14, and
+      `pydantic-core` had no cp314 wheel — install failed trying to build
+      from source on the user's machine (no Rust toolchain). Bumped to
+      fastapi 0.141.1 / uvicorn 0.52.4 / pydantic 2.13.5 (ships
+      pydantic-core 2.48.0, confirmed cp314-win_amd64 wheel). **Confirmed
+      by the user: clean install + all 6 tests passing on their own
+      machine**, not just in a sandbox.
 
 ## Current task
 
