@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env / secrets
+.env
+.env.local
+
+# Generated / local data
+backend/freight.db
+backend/data_pipeline/raw/*
+backend/data_pipeline/processed/*
+!backend/data_pipeline/raw/.gitkeep
+!backend/data_pipeline/processed/.gitkeep
+backend/ml/artifacts/*.pkl
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+.pytest_cache/

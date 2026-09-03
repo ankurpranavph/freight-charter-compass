@@ -1,0 +1,58 @@
+"""
+Freight Charter Compass — backend entrypoint.
+
+Hour 0-2 scope: prove the skeleton is real. Two read endpoints backed by the
+seeded SQLite database, plus a health check. Compatibility, voyage, forecast
+and recommend endpoints are built in later modules (see TODO.md) — this file
+grows by import, not by rewrite, as app/api/* fills in.
+"""
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException
+from app.db.connection import db_session
+from app.db.seed import run_seed
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Idempotent: safe to run every time the server starts during development.
+    run_seed()
+    yield
+
+
+app = FastAPI(
+    title="Freight Charter Compass API",
+    description="Decision support for overseas bulk-cargo vessel chartering — SIH26006.",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "freight-charter-compass-api"}
+
+
+@app.get("/api/v1/vessels")
+def list_vessels():
+    with db_session() as conn:
+        rows = conn.execute("SELECT * FROM vessel_classes").fetchall()
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/v1/ports")
+def list_ports():
+    with db_session() as conn:
+        rows = conn.execute("SELECT * FROM ports").fetchall()
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/v1/ports/{port_id}")
+def get_port(port_id: str):
+    with db_session() as conn:
+        row = conn.execute(
+            "SELECT * FROM ports WHERE port_id = ?", (port_id.upper(),)
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Unknown port_id '{port_id}'")
+        return dict(row)
