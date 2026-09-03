@@ -8,11 +8,12 @@ punch list; it should always reflect reality, not the original plan.
 - [x] Repo skeleton, `.gitignore`, folder structure (backend/frontend/data/docs)
 - [x] `vessel_classes` + `ports` SQLite schema
 - [x] Vessel seed data — 4 classes, assumption-labelled, sourced
-- [x] Port seed data — Visakhapatnam (confirmed), Dhamra (confirmed),
-      Paradip (provisional, flagged unverified)
+- [x] Port seed data — Visakhapatnam, Dhamra, and Paradip all confirmed
+      (`verified: true`); Paradip closed out via Kalinga International
+      Coal Terminal sourcing, see DECISIONS.md #11
 - [x] FastAPI skeleton: `/health`, `/api/v1/vessels`, `/api/v1/ports`,
       `/api/v1/ports/{id}`
-- [x] 6 passing pytest smoke tests
+- [x] 15 passing pytest tests (8 API smoke tests + 7 ingestion-parser tests)
 - [x] Fixed a real bug: `TestClient(app)` without `with` never fires
       FastAPI's lifespan/startup, so the DB never got seeded — switched to
       the `with TestClient(app) as client:` fixture pattern
@@ -30,36 +31,26 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-**Blocking, needs you (not Claude) to run it once:** `ingest_worldbank.py`
-downloads and parses the full World Bank Pink Sheet history but has NOT
-been execution-tested against the real file — Claude's sandboxes cannot
-reach `thedocs.worldbank.org` (confirmed: direct curl fails from both the
-cloud sandbox and this device-bridge shell, org network policy). Run it
-yourself:
-```
-cd backend
-python -m data_pipeline.ingest_worldbank
-```
-It'll either succeed and write `data_pipeline/processed/commodity_prices_worldbank.csv`
-(then re-run `python -m app.db.seed` to load the full history in place of
-the 3-month starter snapshot), or fail with a specific error about the
-file's layout not matching — paste that error back and we'll fix the real
-mismatch. This needs to happen before Hour 5–9 (forecast model) can use
-real history instead of 3 real-but-thin data points.
+None open. Hour 2–5 (Data pipeline) is fully done, including the real
+data ingestion that was blocking — see "Remaining" below for what's next
+(Hour 5–9, the forecast model).
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
-- [x] **Data pipeline (Hour 2–5), partial:**
+- [x] **Data pipeline (Hour 2–5), done:**
   - [x] `commodity_price_history` + `port_traffic_history` tables added to `schema.sql`
   - [x] Paradip's real berth data confirmed (Kalinga International Coal
         Terminal — 17.1m draft, Capesize-capable to 165,000 DWT, two
         independent sources) — `verified: false` → `true`
-  - [x] `ingest_worldbank.py` written (World Bank Pink Sheet parser, dynamic
-        header detection, 4 passing tests against a synthetic file) — not
-        yet run against the real file, see "Current task" above
-  - [x] Real starter snapshot seeded: 3 months x 2 commodities (coal
-        Australian, crude oil Brent) hand-extracted from the actual August
-        2026 Pink Sheet PDF via WebFetch — genuinely real, just thin
+  - [x] `ingest_worldbank.py` written, then corrected against the real
+        file's actual (transposed) layout after the first real run
+        revealed the documented layout was wrong — see DECISIONS.md #12.
+        7 passing tests against a synthetic file matching the confirmed
+        real layout.
+  - [x] **Full real history ingested and seeded**, confirmed by the user
+        running it: 1480 rows — Crude oil Brent 1960–2026 (800 months),
+        Coal Australian 1970–2026 (680 months) — now in
+        `commodity_price_history`, replacing the 3-month starter snapshot.
   - [ ] FRED (PCOALAUUSDM) and RBA Index of Commodity Prices ingestion —
         deprioritized this block (World Bank alone covers both series we
         need); revisit only if the coking-coal-specific RBA sub-index
@@ -95,10 +86,13 @@ None currently open.
 
 ## Priority / blockers
 
-- Paradip's port figures are a placeholder — needs the official
-  berth-wise draft table extracted before it can be trusted in a demo.
-  Not currently blocking (the app runs fine with it flagged unverified),
-  but should not ship to the final demo unresolved.
+None currently open — all three ports are verified, and the commodity
+price history is a full real series rather than a placeholder.
+
+- **Minor, not blocking:** `pytest` prints a `StarletteDeprecationWarning`
+  about `httpx` with `starlette.testclient` being deprecated in favour of
+  `httpx2`. Cosmetic for now; revisit only if a future `httpx`/`starlette`
+  bump actually breaks something.
 - **Dev-environment note, not a blocker:** running `pytest`/`uvicorn`
   through this chat's device bridge occasionally hits background-process
   networking quirks unrelated to the app (see DECISIONS.md). Running the

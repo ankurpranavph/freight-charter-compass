@@ -113,9 +113,10 @@ conversation. Summary:
 (thedocs.worldbank.org, monthly coal/oil prices since 1960, free XLSX), FRED
 PCOALAUUSDM (free API), RBA Index of Commodity Prices (free, includes a
 coking-coal sub-index), shipmin.gov.in monthly port cargo PDFs, data.gov.in
-port traffic dataset, six East Coast port authority sites (Visakhapatnam and
-Dhamra numbers already confirmed; Paradip, Gangavaram, Krishnapatnam, Haldia
-sources confirmed reachable, exact figures pending extraction).
+port traffic dataset, six East Coast port authority sites (Visakhapatnam, Dhamra, and Paradip
+numbers confirmed; Gangavaram, Krishnapatnam, Haldia sources confirmed
+reachable, exact figures pending extraction — deferred until the Hour-27
+checkpoint per the port-staging decision, DECISIONS.md #5).
 
 **Confirmed NOT freely available:** Baltic Exchange's route-level rates
 (BCI/BPI/BSI, the actual Panamax Australia→India voyage rate) — subscription
@@ -137,24 +138,27 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
 - Repo skeleton, `.gitignore`, folder structure.
 - `vessel_classes`, `ports`, `commodity_price_history`, `port_traffic_history`
   schema, seeded with 4 vessel classes (industry-typical, flagged as
-  assumptions) and 3 ports — all three now **verified: true**:
+  assumptions) and 3 ports — all three **verified: true**:
   Visakhapatnam (18.1m coal-berth draft), Dhamra (18m draft, 207,000 DWT
   vessel record), Paradip (17.1m draft via the Kalinga International Coal
   Terminal, confirmed Capesize-capable to 165,000 DWT — two independent
   sources).
-- A real (if thin — 3 months) commodity-price starter dataset: Coal
-  Australian + Crude oil Brent, hand-extracted from the actual World Bank
-  Pink Sheet PDF via WebFetch and checked into `commodity_prices_seed.csv`.
-- `data_pipeline/ingest_worldbank.py` — a full Pink Sheet history parser,
-  written and unit-tested against a synthetic file, but **not yet
-  execution-tested against the real file** — Claude's sandboxes cannot
-  reach `thedocs.worldbank.org` (org network policy blocks it from both
-  the cloud sandbox and the device-bridge shell). Needs the user to run it
-  once from a normal terminal — see TODO.md "Current task".
+- **Full real commodity-price history ingested and seeded**:
+  `data_pipeline/ingest_worldbank.py` downloads and parses the World Bank
+  Pink Sheet, run for real by the user (Claude's sandboxes can't reach
+  `thedocs.worldbank.org` — see DECISIONS.md #10). The first real run
+  revealed the file's actual layout is transposed from what was assumed
+  (months down rows, commodities across columns — see DECISIONS.md #12);
+  the parser was rewritten against the confirmed real layout and re-run
+  successfully: **1480 rows** — Crude oil Brent 1960-01 to 2026-08 (800
+  months), Coal Australian 1970-01 to 2026-08 (680 months) — now loaded
+  into `commodity_price_history` via `python -m app.db.seed`, replacing
+  the earlier 3-month starter snapshot.
 - FastAPI app with `/health`, `/api/v1/vessels`, `/api/v1/ports`,
   `/api/v1/ports/{id}`, `/api/v1/commodity-prices`, seeded on startup via a
   lifespan handler.
-- 12 passing pytest tests (8 API smoke tests + 4 ingestion-parser tests).
+- 15 passing pytest tests (8 API smoke tests + 7 ingestion-parser tests),
+  confirmed by the user on their own machine.
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and
@@ -166,9 +170,11 @@ the exact next step.
 - Vessel class specs are typical-class figures compiled from public
   maritime references, not one specific registered hull — every row in
   `vessels.json` carries `is_assumption: true` and a source.
-- Paradip's port figures in `ports.json` are provisional
-  (`verified: false`) — do not present them as confirmed until Module 3
-  extracts the real berth-wise draft table.
+- Paradip's LOA/beam figures in `ports.json` are *inferred* from its
+  confirmed Capesize-class (165,000 DWT) capability, not read off an
+  independent berth-dimension table like the draft figure was — see
+  DECISIONS.md #11. The port as a whole is `verified: true`; this is a
+  narrower caveat about two specific fields.
 - Port lat/lon are harbour-level approximations for map display, not
   surveyed berth positions.
 

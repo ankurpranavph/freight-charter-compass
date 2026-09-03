@@ -167,3 +167,39 @@ from the stated 165,000 DWT Capesize-class capability, not read off an
 independent berth dimension table — `ports.json`'s `berth_reference` field
 says so explicitly, so a future session (or a judge reading the Data
 Sources page) doesn't mistake an inference for a direct citation.
+
+## 12. World Bank Pink Sheet's real layout is transposed vs. documented format — parser rewritten, full history now ingested
+
+**Decision:** rewrote `ingest_worldbank.py`'s parsing logic entirely, based
+on the actual downloaded file rather than documentation.
+**What happened:** the first execution attempt (run by the user, since
+Claude cannot reach `thedocs.worldbank.org` — see Decision #10) downloaded
+successfully but matched zero commodity rows. A diagnostic dump of the raw
+grid (requested from the user, since Claude cannot open the file either)
+showed the real "Monthly Prices" sheet has months running **down** column A
+(`"1960M01"`, `"1960M02"`, ...) with commodities **across** the columns as
+headers (col 1 "Crude oil, average", col 2 "Crude oil, Brent", col 5 "Coal,
+Australian", etc.), one units row below the header, then data. This is the
+opposite orientation from what the original script assumed (commodities
+down column A, months across) — that assumption came from older
+documentation of the Pink Sheet format; the real file's layout has
+apparently changed since.
+**Fix:** `find_header_row`/`parse` replaced with three dynamic detection
+steps — `find_date_column` (scans all columns for the one with the most
+`"\d{4}M\d{2}"` matches), `find_first_data_row` (first row where that
+column matches), `find_header_row` (nearest row above the first data row
+with mostly commodity-name text, skipping a units row if present). Also
+handles the real file's missing-value marker, the literal string `'…'`
+(ellipsis) rather than a blank cell. Tests rewritten against a synthetic
+file matching the *confirmed real* layout (7 tests, all passing).
+**Result, confirmed by the user running it for real:** 1480 rows —
+Crude oil Brent 1960-01 to 2026-08 (800 monthly points), Coal Australian
+1970-01 to 2026-08 (680 monthly points) — loaded into
+`commodity_price_history` via `python -m app.db.seed`, replacing the
+3-month starter snapshot. This is now a genuinely strong real dataset for
+the Hour 5–9 SARIMAX forecast — 55-plus years for oil, 56 years for coal,
+both continuous through the present month.
+**Lesson for future data-ingestion steps in this project:** don't assume a
+documented file layout is current: get a raw grid dump of the actual file
+(via the user, since Claude can't open XLSX binaries itself) before writing
+the parser, not after it fails.
