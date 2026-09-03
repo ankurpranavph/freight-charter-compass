@@ -104,11 +104,15 @@ not created speculatively upfront.
   SARIMAX vs. seasonal-naive baseline, evaluated on a real holdout. 404 for
   an unknown/empty commodity; `status: "insufficient_data"` (not an error)
   if fewer than 30 months of history are loaded for that commodity.
+- `GET /api/v1/compatibility/check?vessel_type=X&port_id=Y` — Module 4
+  (physical gate): draft/LOA/beam + coal-handling check, with the exact
+  rejection reason(s). 404 for an unknown vessel_type or port_id.
+- `GET /api/v1/compatibility/matrix` — every vessel class x every seeded
+  port (currently 12 combinations), same format.
 
-Planned next (Module 4 onward): `/api/v1/compatibility/check`,
-`/api/v1/voyage/calculate`, `/api/v1/recommend`,
-`/api/v1/decision/book-vs-wait`, `/api/v1/scenario/simulate`,
-`/api/v1/data-sources`.
+Planned next (Module 5 onward): `/api/v1/voyage/calculate`,
+`/api/v1/recommend`, `/api/v1/decision/book-vs-wait`,
+`/api/v1/scenario/simulate`, `/api/v1/data-sources`.
 
 ## Data sources — real vs. calculated vs. simulated
 
@@ -177,11 +181,22 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   methodology.
 - 24 passing pytest tests (10 API smoke tests + 7 ingestion-parser tests +
   7 forecast-engine tests).
+- **Module 4 (physical gate) built:** `app/engine/compatibility.py` —
+  draft/LOA/beam vs. port limits, plus coal-handling, with the exact
+  rejection reason(s) per failing dimension. A port missing a dimension
+  is reported "unknown" and treated as NOT compatible (never silently
+  assumed to fit). Real finding on the actual seeded data: Capesize is
+  the only vessel class that doesn't fit everywhere — it fails at Paradip
+  on both draft and LOA, and at Dhamra on LOA alone (Dhamra's draft limit
+  is exactly Capesize's draft, an exact-boundary pass). `GET
+  /api/v1/compatibility/check` and `/matrix`.
+- 35 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
+  forecast-engine + 11 compatibility-engine).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and
-everything from Module 4 (compatibility engine) onward — see TODO.md for
-the exact next step.
+everything from Module 5 (voyage cost calculator) onward — see TODO.md
+for the exact next step.
 
 ## Important assumptions
 

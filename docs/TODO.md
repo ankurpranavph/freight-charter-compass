@@ -69,11 +69,24 @@ data ingestion that was blocking — see "Remaining" below for what's next
       for full numbers). 24 total tests now (10 API smoke tests including
       2 new forecast-endpoint tests, 7 ingestion-parser tests, 7
       forecast-engine tests) — `pytest tests/ -v` to confirm.
-- [ ] **Backend core (Hour 9–13):** `app/engine/compatibility.py` (Module
-      4 — draft/LOA/beam check with explicit rejection reasons),
-      `app/engine/voyage.py` (Module 5 — distance via waypoints, fuel,
-      cost), corresponding `/api/v1/compatibility/check` and
-      `/api/v1/voyage/calculate` endpoints.
+- [x] **Compatibility engine (Module 4), done:**
+      `app/engine/compatibility.py` — draft/LOA/beam vs. port limits plus
+      coal-handling, exact rejection reason(s) per failing dimension,
+      missing port data reported "unknown" (never assumed to fit). `GET
+      /api/v1/compatibility/check` + `/matrix`. Real finding: Capesize
+      fails at Paradip (draft + LOA) and Dhamra (LOA only) — the other 3
+      vessel classes fit all 3 ports. 11 new tests (6 unit against
+      synthetic data, 5 against the real seeded vessel/port data) — 35
+      total now.
+- [ ] **Voyage cost calculator (Module 5), Hour 9–13 remainder:**
+      `app/engine/voyage.py` — distance via a small fixed set of waypoints
+      (not a general routing system, see DECISIONS.md #8), fuel cost,
+      total voyage cost. Needs real research before coding: origin port
+      coordinates (Australia/Indonesia/South Africa coal-loading ports),
+      a real reference bunker fuel price (flagged ASSUMPTION with a
+      source/date, not live), and typical time-charter day rates per
+      vessel class (currently `opex_usd_day: null` in `vessels.json`,
+      deferred here on purpose). `/api/v1/voyage/calculate` endpoint.
 - [ ] **Decision engine (Hour 13–17):** `app/engine/optimizer.py` (Module
       6 — risk-adjusted scoring), `app/engine/book_or_wait.py` (Module 7),
       `/api/v1/recommend` and `/api/v1/decision/book-vs-wait` wired

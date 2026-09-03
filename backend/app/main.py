@@ -12,6 +12,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from app.db.connection import db_session
 from app.db.seed import run_seed
+from app.engine.compatibility import build_matrix, check_compatibility
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 
 
@@ -98,3 +99,33 @@ def get_forecast(commodity: str, horizon: int = Query(DEFAULT_HORIZON, ge=1, le=
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return result.as_dict()
+
+
+@app.get("/api/v1/compatibility/check")
+def compatibility_check(vessel_type: str, port_id: str):
+    """Module 4 (physical gate): can this vessel class call at this port?
+    Checks draft/LOA/beam against the port's stated limits plus coal
+    handling. See app/engine/compatibility.py for the exact rules."""
+    with db_session() as conn:
+        vessel_row = conn.execute(
+            "SELECT * FROM vessel_classes WHERE vessel_type = ?", (vessel_type,)
+        ).fetchone()
+        port_row = conn.execute(
+            "SELECT * FROM ports WHERE port_id = ?", (port_id.upper(),)
+        ).fetchone()
+    if vessel_row is None:
+        raise HTTPException(status_code=404, detail=f"Unknown vessel_type '{vessel_type}'")
+    if port_row is None:
+        raise HTTPException(status_code=404, detail=f"Unknown port_id '{port_id}'")
+    return check_compatibility(dict(vessel_row), dict(port_row)).as_dict()
+
+
+@app.get("/api/v1/compatibility/matrix")
+def compatibility_matrix():
+    """Every vessel class x every seeded port, each with a pass/fail and
+    the exact reason for any failure. Powers the Vessel & Port
+    Recommendation dashboard page."""
+    with db_session() as conn:
+        vessels = [dict(r) for r in conn.execute("SELECT * FROM vessel_classes").fetchall()]
+        ports = [dict(r) for r in conn.execute("SELECT * FROM ports").fetchall()]
+    return build_matrix(vessels, ports)

@@ -255,3 +255,29 @@ for this). Three summary statistics don't justify an extra dependency
 and its own Python 3.14 wheel-compatibility risk — `statsmodels` and
 `scipy` already needed checking (see requirements.txt; both confirmed
 `cp314-win_amd64` wheels on PyPI before pinning `statsmodels==0.15.0`).
+
+## 14. Compatibility engine: a hard gate with an honest "unknown" state, not a score
+
+**Decision:** `app/engine/compatibility.py` returns a boolean `compatible`
+plus exact per-dimension reasons — never a fuzzy compatibility score. A
+port missing a dimension figure is reported as `"unknown"` for that
+dimension and the whole result is `compatible: false`, not `true` by
+default.
+**Alternatives considered:** a soft "compatibility score" (e.g. 0-100)
+that Module 6's optimizer could weigh directly, and treating a missing
+port dimension as a pass (benefit of the doubt).
+**Why rejected:** physical fit isn't a matter of degree — a vessel with
+a draft deeper than the berth either can call there or it can't. Turning
+that into a fuzzy score would hide the real reason from both the
+optimizer and a judge asking "why was this combination excluded". Treating
+missing data as a pass would mean a Phase-2 port added with incomplete
+figures could get recommended for a vessel it might not actually fit —
+exactly the kind of overclaim this project's data-honesty rules exist to
+prevent. Cost/risk *is* a matter of degree and gets scored in Module 6 —
+but only among the vessel/port pairs that already cleared this gate.
+**Verified against real data, not just synthetic tests:** Capesize (draft
+18.0m, LOA 292m) is the only one of the 4 vessel classes that doesn't fit
+all 3 currently seeded ports — it fails at Paradip on both draft (17.1m
+limit) and LOA (290m limit), and at Dhamra on LOA alone (Dhamra's draft
+limit is exactly 18.0m, an exact-boundary pass, not a failure). Handysize,
+Supramax, and Panamax fit all 3 ports.
