@@ -1216,3 +1216,71 @@ This closes the last item from the original SIH26006 gap-check (#22 →
 ingestion script (#23) still hasn't been run against the live file by
 anyone, and Phase 2 polish / demo readiness are next per the user's own
 sequencing.
+
+## 27. Making the app deployable, so a few people can access it and give feedback
+
+Everything up to this point ran on localhost only — a deliberate scope
+choice (see the CORS comment removed by this change) since there was no
+audience beyond the user's own machine yet. The user now wants a
+handful of people to be able to open the app and give feedback, without
+requiring their own laptop to stay on and connected the whole time —
+so this is a real deployment (Render for the backend, Vercel for the
+frontend), not a temporary tunnel.
+
+**Two hardcoded localhost assumptions had to become configurable
+first**, both minimal, backward-compatible changes — local dev behavior
+is unchanged if neither env var is set:
+
+- `frontend/src/api/client.js`'s `API_BASE` now reads Vite's
+  `import.meta.env.VITE_API_BASE`, falling back to
+  `http://localhost:8000` exactly as before. Verified both branches by
+  building the frontend twice — once with no env var (embeds
+  `localhost:8000`, confirmed via `grep` on the built JS) and once with
+  `VITE_API_BASE=https://example-backend.onrender.com` (embeds that
+  URL instead). Vite only substitutes `VITE_`-prefixed vars at *build*
+  time, so this is set once in Vercel's project settings, not something
+  the running app reads at request time.
+- `backend/app/main.py`'s CORS `allow_origins` now always includes the
+  two local dev origins, plus whatever's in the `ALLOWED_ORIGINS` env
+  var (comma-separated, unset by default — verified with a synthetic
+  env var producing the right combined list). This stays a fixed
+  allowlist, not `allow_origins=["*"]`: the API is read-only public
+  demo data with no auth or cookies, so an open CORS policy would carry
+  no real risk, but a small explicit allowlist costs nothing and is the
+  more defensible default to show reviewers.
+
+**New deployment config, both platform-native so no custom scripting is
+needed:**
+
+- `render.yaml` at the repo root — a Render Blueprint. `rootDir:
+  backend`, `pip install -r requirements.txt`, `uvicorn app.main:app
+  --host 0.0.0.0 --port $PORT`, health check on the existing `/health`
+  endpoint. Pinned `PYTHON_VERSION: 3.11.15` to match the exact
+  interpreter this project's pinned dependencies (fastapi 0.141.1,
+  pydantic 2.13.5, statsmodels 0.15.0) are confirmed installing cleanly
+  under in this sandbox — not a guess. `freight.db` is fully rebuilt
+  from the seed files on every startup (`run_seed()`, already the case
+  since Hour 0), so Render's ephemeral free-tier filesystem being wiped
+  on every redeploy is a non-issue — there was never anything stateful
+  to lose.
+- `frontend/vercel.json` — a SPA rewrite (`/(.*) -> /index.html`) so
+  `react-router-dom`'s client-side routes (`/forecast`,
+  `/recommendation`, etc.) don't 404 on a direct load or refresh, which
+  a static host serves literally without this.
+
+**Deliberately left for the user to do by hand, not automated here:**
+pushing to GitHub (the user already has a GitHub account; this session
+has no GitHub credentials of its own and no `gh` CLI on the device),
+and the actual Render/Vercel account creation and "connect this repo"
+clicks (OAuth sign-in flows aren't something this session can complete
+on the user's behalf). Once both are live, the two URLs get cross-wired
+by hand once: the Render backend URL into Vercel's `VITE_API_BASE`, and
+the Vercel frontend URL into Render's `ALLOWED_ORIGINS` — a one-time
+manual step, not something worth automating for a two-service demo
+deploy.
+
+**Verified before writing this down:** 120/120 backend tests still
+pass unchanged (the CORS change touches middleware config, not
+behavior any test exercises), and both frontend build variants
+(default and `VITE_API_BASE` override) were built and grepped to
+confirm the right URL lands in the bundled JS either way.

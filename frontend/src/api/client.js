@@ -1,10 +1,11 @@
 // Thin fetch wrapper around the FastAPI backend (see backend/app/main.py).
 //
-// No env-based config yet: the backend always runs on localhost:8000 in
-// this dev/demo setup (see PROJECT_CONTEXT.md's 5-page MVP scope — there's
-// no deployed backend to point at). If that changes, this is the one
-// place to add a configurable base URL.
-const API_BASE = "http://localhost:8000";
+// Reads VITE_API_BASE at build time (set in Vercel's project settings for
+// the deployed frontend — DECISIONS.md #27) and falls back to localhost:8000
+// for local dev, where the backend always runs unconfigured. Vite only
+// exposes env vars prefixed VITE_ to client code, and only substitutes them
+// at build time — this is not a runtime-configurable value.
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 class ApiError extends Error {
   constructor(message, status, detail) {

@@ -6,6 +6,7 @@ seeded SQLite database, plus a health check. Compatibility, voyage, forecast
 and recommend endpoints are built in later modules (see TODO.md) — this file
 grows by import, not by rewrite, as app/api/* fills in.
 """
+import os
 from contextlib import asynccontextmanager
 
 import pandas as pd
@@ -38,18 +39,23 @@ app = FastAPI(
 
 # The frontend (Vite dev server, default http://localhost:5173) is a
 # different origin from this API (http://localhost:8000), so the browser
-# blocks fetch() calls between them without explicit CORS headers. This
-# is a hackathon demo running entirely on localhost — not a public
-# deployment — so a small fixed allowlist of local dev origins is the
-# right scope; it is not "allow *" and does not need to be, since there's
-# no browser-facing production deployment of this API planned (see
-# DECISIONS.md #7 on the 5-page MVP scope).
+# blocks fetch() calls between them without explicit CORS headers. The
+# local dev origins are always allowed; a deployed frontend's origin
+# (e.g. a Vercel URL) is added via the ALLOWED_ORIGINS env var —
+# comma-separated, set on the hosting platform, never hardcoded here —
+# so this file doesn't need a code change per deployment. Still a fixed
+# allowlist, not "allow *": this API serves only read-only public demo
+# data (no auth, no cookies, no write endpoints), so the origin check
+# is a sensible default rather than a strict security boundary — see
+# DECISIONS.md #27.
+_allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+] + [origin.strip() for origin in os.environ.get("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_allowed_origins,
     allow_methods=["GET"],
     allow_headers=["*"],
 )
