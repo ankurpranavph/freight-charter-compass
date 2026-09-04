@@ -3,9 +3,18 @@ import { api } from "../api/client";
 import ForecastChart from "../components/ForecastChart";
 
 const COMMODITIES = [
-  { id: "coal_australian", label: "Coal (Australian)" },
+  { id: "coking_coal", label: "Coking coal (Australian, metallurgical)" },
+  { id: "coal_australian", label: "Coal (Australian, thermal)" },
   { id: "crude_oil_brent", label: "Crude oil (Brent)" },
 ];
+
+// coal_australian has 680 real months loaded; coking_coal has just the one
+// real dated snapshot until ingest_rba_coking_coal.py's real run (see
+// DECISIONS.md #23) — default to the commodity that already has a working
+// forecast to show, not the one that (correctly) shows "not enough data
+// yet" on first load. Coking coal is still listed first in the picker
+// above since it's the commodity SAIL actually procures.
+const DEFAULT_COMMODITY_ID = "coal_australian";
 
 const HORIZONS = [3, 6, 12, 24];
 
@@ -140,7 +149,7 @@ function MetricsPanel({ evaluation, modelInfo }) {
 }
 
 export default function Forecast() {
-  const [commodity, setCommodity] = useState(COMMODITIES[0].id);
+  const [commodity, setCommodity] = useState(DEFAULT_COMMODITY_ID);
   const [horizon, setHorizon] = useState(6);
   const { loading, error, data } = useForecastData(commodity, horizon);
 

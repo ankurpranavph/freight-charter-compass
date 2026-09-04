@@ -41,9 +41,31 @@ the genuine Haldia zero-compatibility finding (a real, verified,
 coal-handling port whose 9.1m tidal draft excludes every modeled vessel
 class -- confirmed correct, not a bug, on the user's own machine).
 
-Next module choice -- the deliberately-deferred INR secondary currency
-display (DECISIONS.md #20) or Indian port traffic history -- still to be
-put to the user.
+The user then asked whether the app actually satisfies the SIH26006
+problem statement -- answer: mostly yes on Predict->Simulate->Optimize->
+Recommend, with two named gaps (coking-vs-thermal-coal proxy, and no
+cross-port recommendation). User chose to fix both, one at a time,
+starting with the coking coal proxy.
+
+**Coking coal proxy fix, done, awaiting on-machine confirmation:**
+`coal_australian` was thermal coal (confirmed by fetching the real World
+Bank Pink Sheet's own columns -- no coking coal line at all), but SAIL
+procures coking (metallurgical) coal. Added `coking_coal`, sourced from
+RBA's Index of Commodity Prices (real, Australian-origin, chosen over
+FRED's too-short 18-month series) via a new
+`data_pipeline/ingest_rba_coking_coal.py` -- real code, same one-time
+"user runs it, Claude's environments can't reach rba.gov.au" pattern as
+`ingest_worldbank.py`, except this parser's layout is UNVERIFIED against
+the real file (unlike the World Bank one) -- see DECISIONS.md #23. One
+real cited coking-coal snapshot ($214.90/t, 7 Aug 2026) seeded now so the
+app degrades honestly (insufficient_data, correct script name) rather
+than showing nothing. 98 passing tests (up from 87). Verified in a
+sandbox headless browser; not yet confirmed on the user's own machine,
+and the real RBA ingestion has not been run by anyone yet.
+
+Still open after that: cross-port recommendation (the other named gap),
+the deliberately-deferred INR secondary currency display (DECISIONS.md
+#20), and Indian port traffic history.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 

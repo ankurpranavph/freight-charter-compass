@@ -78,33 +78,47 @@ def seed_origin_ports(conn) -> int:
 
 def seed_commodity_prices(conn) -> int:
     """
-    Loads whichever commodity-price CSV is available, preferring the full
-    history from ingest_worldbank.py if the user has run it, falling back
-    to the small real starter snapshot checked into the repo.
+    Layers commodity-price CSVs on top of each other, in order, using
+    INSERT OR REPLACE keyed on (date, commodity) -- each later file simply
+    overwrites/extends whichever rows it also covers, never deletes rows
+    only an earlier file provided:
+
+    1. The small real starter snapshot checked into the repo (always
+       present) -- covers coal_australian, crude_oil_brent, and one real
+       cited coking_coal snapshot (see DECISIONS.md #23).
+    2. ingest_worldbank.py's full coal_australian/crude_oil_brent history,
+       if the user has run it.
+    3. ingest_rba_coking_coal.py's full coking_coal history, if the user
+       has run it.
+
+    Any of #2/#3 not yet run is simply skipped -- this function never
+    requires all sources to be present, and never fabricates rows for a
+    file that doesn't exist.
     """
-    full_history = (
-        Path(__file__).resolve().parents[2]
-        / "data_pipeline" / "processed" / "commodity_prices_worldbank.csv"
-    )
-    starter = DATA_DIR / "commodity_prices_seed.csv"
-    path = full_history if full_history.exists() else starter
+    processed_dir = Path(__file__).resolve().parents[2] / "data_pipeline" / "processed"
+    paths = [DATA_DIR / "commodity_prices_seed.csv"]
+    for name in ("commodity_prices_worldbank.csv", "commodity_prices_rba_coking.csv"):
+        candidate = processed_dir / name
+        if candidate.exists():
+            paths.append(candidate)
 
     n = 0
-    with open(path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO commodity_price_history
-                    (date, commodity, price_usd, unit, source, source_url)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    row["date"], row["commodity"], float(row["price_usd"]),
-                    row["unit"], row.get("source"), row.get("source_url"),
-                ),
-            )
-            n += 1
-    return n, path
+    for path in paths:
+        with open(path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO commodity_price_history
+                        (date, commodity, price_usd, unit, source, source_url)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row["date"], row["commodity"], float(row["price_usd"]),
+                        row["unit"], row.get("source"), row.get("source_url"),
+                    ),
+                )
+                n += 1
+    return n, paths
 
 
 def run_seed() -> None:
@@ -113,11 +127,12 @@ def run_seed() -> None:
         n_vessels = seed_vessels(conn)
         n_ports = seed_ports(conn)
         n_origin_ports = seed_origin_ports(conn)
-        n_prices, price_source = seed_commodity_prices(conn)
+        n_prices, price_sources = seed_commodity_prices(conn)
+    sources_str = ", ".join(p.name for p in price_sources)
     print(
         f"Seeded {n_vessels} vessel classes, {n_ports} ports, "
         f"{n_origin_ports} origin ports, {n_prices} commodity-price rows "
-        f"(from {price_source.name})."
+        f"(from {sources_str})."
     )
 
 

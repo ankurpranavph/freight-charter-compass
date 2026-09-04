@@ -86,9 +86,11 @@ def get_port(port_id: str):
 
 @app.get("/api/v1/commodity-prices")
 def list_commodity_prices(commodity: str | None = None):
-    """Real commodity price history (World Bank Pink Sheet — see
-    docs/PROJECT_CONTEXT.md for the real/calculated/simulated breakdown).
-    Optional ?commodity=coal_australian|crude_oil_brent filter."""
+    """Real commodity price history (World Bank Pink Sheet for
+    coal_australian/crude_oil_brent, RBA Index of Commodity Prices for
+    coking_coal — see docs/PROJECT_CONTEXT.md for the real/calculated/
+    simulated breakdown). Optional
+    ?commodity=coal_australian|crude_oil_brent|coking_coal filter."""
     with db_session() as conn:
         if commodity:
             rows = conn.execute(
@@ -157,7 +159,7 @@ def compatibility_matrix():
 @app.get("/api/v1/origin-ports")
 def list_origin_ports():
     """The fixed small set of overseas coal-loading ports this app costs
-    voyages from - see docs/DECISIONS.md #8 for why this isn't a general
+    voyages from — see docs/DECISIONS.md #8 for why this isn't a general
     port database."""
     with db_session() as conn:
         rows = conn.execute("SELECT * FROM origin_ports").fetchall()
@@ -175,7 +177,7 @@ def voyage_calculate(
     from an overseas loading port to an East Coast India port. Distance is
     CALCULATED (great-circle via hand-chosen waypoints); bunker price and
     time-charter rate are real, cited, point-in-time ASSUMPTIONs, not live
-    feeds - see app/engine/voyage.py and the response's `assumptions`
+    feeds — see app/engine/voyage.py and the response's `assumptions`
     block. `cargo_tonnes` defaults to the vessel's full DWT."""
     with db_session() as conn:
         vessel_row = conn.execute(
@@ -255,7 +257,7 @@ def data_sources():
     """Data Sources & Assumptions page backing: every REAL/CALCULATED/
     SIMULATED/ASSUMPTION figure in the app, in one catalog, read live from
     the same seeded rows and cited constants the rest of the API already
-    uses (never a separately hand-maintained duplicate) -- see
+    uses (never a separately hand-maintained duplicate) — see
     app/engine/data_sources.py."""
     with db_session() as conn:
         return build_data_sources(conn)

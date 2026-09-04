@@ -31,8 +31,9 @@ from app.engine.voyage import (
 VALID_CLASSIFICATIONS = {"REAL", "CALCULATED", "SIMULATED", "ASSUMPTION"}
 
 COMMODITY_LABELS = {
-    "coal_australian": "Coal (Australian)",
+    "coal_australian": "Coal (Australian, thermal)",
     "crude_oil_brent": "Crude oil (Brent)",
+    "coking_coal": "Coking coal (Australian, metallurgical — what SAIL actually procures)",
 }
 
 
@@ -64,11 +65,25 @@ def _commodity_price_entries(conn) -> list:
     for r in rows:
         row = dict(r)
         label = COMMODITY_LABELS.get(row["commodity"], row["commodity"])
+        if row["n"] == 1:
+            # A single dated snapshot (e.g. the one real coking-coal price
+            # point seeded before its full-history ingestion script has
+            # been run) is not "monthly price history" -- say so plainly
+            # rather than implying a series that doesn't exist yet.
+            title = f"{label} — single dated snapshot"
+            detail = (
+                f"1 real cited data point ({row['d0']}) — not yet a monthly "
+                "series; run data_pipeline/ingest_rba_coking_coal.py for "
+                "the full history (see DECISIONS.md #23)."
+            )
+        else:
+            title = f"{label} — monthly price history"
+            detail = f"{row['n']} months, {row['d0']} to {row['d1']}"
         entries.append(
             _entry(
-                f"{label} — monthly price history",
+                title,
                 "REAL",
-                detail=f"{row['n']} months, {row['d0']} to {row['d1']}",
+                detail=detail,
                 source=row["source"],
                 source_url=row["source_url"],
             )

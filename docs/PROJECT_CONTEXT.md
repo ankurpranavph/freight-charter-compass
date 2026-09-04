@@ -107,7 +107,7 @@ not created speculatively upfront.
 - `GET /api/v1/vessels` — all 4 vessel classes
 - `GET /api/v1/ports` — all seeded ports
 - `GET /api/v1/ports/{port_id}` — one port, 404 if unknown
-- `GET /api/v1/commodity-prices` — real price history, optional `?commodity=` filter
+- `GET /api/v1/commodity-prices` — real price history for coal_australian/crude_oil_brent/coking_coal, optional `?commodity=` filter (coking_coal added — DECISIONS.md #23)
 - `GET /api/v1/forecast/{commodity}?horizon=1..24` — Module 1 (Predict):
   SARIMAX vs. seasonal-naive baseline, evaluated on a real holdout. 404 for
   an unknown/empty commodity; `status: "insufficient_data"` (not an error)
@@ -325,14 +325,45 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   `verified` checks + 3 optimizer real-data tests covering the exact
   boundary, the all-compatible case, and the zero-result case) plus the
   existing matrix/ports/data-sources tests updated for 6 ports —
-  **87 passing tests total.** Verified in a sandbox headless browser;
-  awaiting the user's own on-machine confirmation before this commit
-  lands. See DECISIONS.md #22.
+  **87 passing tests total.** Verified in a sandbox headless browser and
+  confirmed by the user on their own machine (commit `11-ports-4-6`).
+  See DECISIONS.md #22.
 
-**Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
-covers the two series we need), Indian port traffic history, and an
-INR secondary currency display (deliberately deferred — DECISIONS.md
-#20) — see TODO.md for exact next steps.
+- **Coking coal proxy fix:** raised by the user asking whether the app
+  satisfies SIH26006's problem statement — answer was mostly yes, with
+  two named gaps. This closes the more substantive one: `coal_australian`
+  is thermal coal (confirmed by fetching the real World Bank Pink
+  Sheet's own columns — it has no coking coal line at all), but SAIL
+  procures coking (metallurgical) coal for steelmaking. Added a new
+  `coking_coal` commodity, sourced from the RBA's Index of Commodity
+  Prices (chosen over FRED's too-short 18-month metallurgical-coal
+  series) — real, Australian-origin, matching this app's own
+  NEWCASTLE_AU port, but not directly reachable from Claude's
+  environments (same egress constraint as DECISIONS.md #10), so
+  `data_pipeline/ingest_rba_coking_coal.py` is real, defensively-written
+  code the user needs to run once, same one-time pattern as
+  `ingest_worldbank.py` — except this parser's assumed layout is
+  UNVERIFIED against the real file (built from RBA's documented
+  statistical-table convention, not a confirmed dump), so a first real
+  run may need a follow-up layout fix. One real, cited, single-day
+  coking-coal price ($214.90/t, 7 Aug 2026) is seeded now so the honest
+  "insufficient_data" message points at the right script instead of
+  showing nothing. `coal_australian` stays (relabelled "thermal"
+  everywhere) as the Forecast page's default, since it already has 680
+  real months; coking_coal is listed first in the picker regardless,
+  since it's the commodity that matters here. Also fixed in passing: the
+  insufficient_data message used to always recommend
+  `ingest_worldbank.py` regardless of commodity — a real small bug,
+  caught while building this, now looks up the right script per
+  commodity. 11 new tests — **98 passing tests total.** See
+  DECISIONS.md #23.
+
+**Not yet built:** the real RBA coking-coal ingestion has not been run
+for real by anyone yet (script exists, layout unverified — see
+DECISIONS.md #23); a cross-port recommendation ranking (the other named
+gap against the problem statement — not yet started); Indian port
+traffic history; and an INR secondary currency display (deliberately
+deferred — DECISIONS.md #20) — see TODO.md for exact next steps.
 
 ## Important assumptions
 

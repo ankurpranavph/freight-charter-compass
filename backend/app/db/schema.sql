@@ -37,12 +37,16 @@ CREATE TABLE IF NOT EXISTS ports (
     source_date            TEXT
 );
 
--- Added in the data-pipeline block (Hour 2-5).
+-- Added in the data-pipeline block (Hour 2-5). 'coking_coal' added at the
+-- coking-coal-proxy fix (DECISIONS.md #23) -- the commodity SAIL actually
+-- procures; 'coal_australian' is thermal coal, kept as a distinct series,
+-- not replaced (see the labels each is given in the frontend/data-sources
+-- catalog for the thermal/coking distinction).
 CREATE TABLE IF NOT EXISTS commodity_price_history (
-    date        TEXT NOT NULL,        -- ISO date, first-of-month for monthly series
-    commodity   TEXT NOT NULL,        -- 'coal_australian' | 'crude_oil_brent'
+    date        TEXT NOT NULL,        -- ISO date, first-of-month for a monthly series; an exact date for a single dated snapshot
+    commodity   TEXT NOT NULL,        -- 'coal_australian' | 'crude_oil_brent' | 'coking_coal'
     price_usd   REAL NOT NULL,        -- $/tonne (coal) or $/bbl (oil) — see unit per commodity
-    unit        TEXT NOT NULL,        -- 'usd_per_tonne' | 'usd_per_bbl'
+    unit        TEXT NOT NULL,        -- 'usd_per_tonne' | 'usd_per_bbl' | whatever ingest_rba_coking_coal.py's real run reports (see its docstring)
     source      TEXT,
     source_url  TEXT,
     PRIMARY KEY (date, commodity)
@@ -59,9 +63,9 @@ CREATE TABLE IF NOT EXISTS port_traffic_history (
 );
 
 -- Added in the voyage-calculator block (Hour 9-13, Module 5). Overseas
--- coal-loading ports - the origin side of every voyage this app costs out.
+-- coal-loading ports — the origin side of every voyage this app costs out.
 -- Fixed small set (Australia/Indonesia/South Africa), not a general port
--- database - see DECISIONS.md #8.
+-- database — see DECISIONS.md #8.
 CREATE TABLE IF NOT EXISTS origin_ports (
     origin_id   TEXT PRIMARY KEY,    -- e.g. NEWCASTLE_AU
     name        TEXT NOT NULL,

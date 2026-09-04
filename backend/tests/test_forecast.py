@@ -1,21 +1,21 @@
 """
-Tests for app/engine/forecast.py (Module 1 -- Predict).
+Tests for app/engine/forecast.py (Module 1 — Predict).
 
 Two layers, deliberately kept separate:
 - Pure-function tests (seasonal-naive, MAE/RMSE/MAPE) against hand-checked
-  numbers -- fast, no model fitting involved.
+  numbers — fast, no model fitting involved.
 - build_forecast() end-to-end against a synthetic series long enough to
   exercise the real SARIMAX path, asserting shape/contract (status,
   fields present, forecast length, dates continue monthly) rather than
-  exact numeric values -- a statsmodels/scipy version bump can legitimately
+  exact numeric values — a statsmodels/scipy version bump can legitimately
   shift a fitted coefficient by a small amount without being a bug.
 
 Real-data correctness (does the forecast look sane on the actual 1480-row
-World Bank series) was checked manually against your real ingested data
-before this module was written -- see DECISIONS.md #13 for the actual
+World Bank series) was checked manually against the user's real ingested
+data before this module was written — see DECISIONS.md #13 for the actual
 numbers (SARIMAX beat the seasonal-naive baseline on both commodities).
-You can also just call GET /api/v1/forecast/coal_australian yourself now
-that the real history is loaded and see it live.
+That real file isn't part of this repo (gitignored, device-only), so it
+can't be a test fixture here.
 """
 import sys
 from pathlib import Path
@@ -37,7 +37,7 @@ from app.engine.forecast import (
 
 @pytest.fixture(autouse=True)
 def _no_cache_bleed():
-    # build_forecast caches by (commodity, horizon, len(df)) -- clear before
+    # build_forecast caches by (commodity, horizon, len(df)) — clear before
     # and after each test so tests can't see each other's cached results.
     clear_cache()
     yield
@@ -95,6 +95,21 @@ def test_build_forecast_insufficient_data():
     assert len(result.historical) == MIN_POINTS_FOR_SARIMAX - 5
 
 
+def test_insufficient_data_note_points_at_the_right_ingest_script():
+    # coking_coal currently has just 1 real seeded row (a single dated
+    # snapshot, see DECISIONS.md #23) until the user runs
+    # ingest_rba_coking_coal.py for the real full history -- the
+    # insufficient_data message must point at THAT script, not the World
+    # Bank one used for coal_australian/crude_oil_brent.
+    df = _synthetic_series(1)
+    result = build_forecast("coking_coal", df, horizon=6, use_cache=False)
+    assert result.status == "insufficient_data"
+    assert "ingest_rba_coking_coal.py" in result.note
+
+    result2 = build_forecast("coal_australian", df, horizon=6, use_cache=False)
+    assert "ingest_worldbank.py" in result2.note
+
+
 def test_build_forecast_ok_path_shape_and_contract():
     df = _synthetic_series(60)  # 5 years, well above MIN_POINTS_FOR_SARIMAX
     result = build_forecast("test_commodity", df, horizon=6, use_cache=False)
@@ -130,11 +145,11 @@ def test_build_forecast_uses_cache(monkeypatch):
     df = _synthetic_series(60)
     first = build_forecast("cache_test", df, horizon=6, use_cache=True)
     # Corrupt the module's private fit function so a second real fit would
-    # raise -- if the cache isn't hit, this call blows up.
+    # raise — if the cache isn't hit, this call blows up.
     import app.engine.forecast as forecast_mod
 
     def _boom(*a, **k):
-        raise AssertionError("should not re-fit -- cache should have been used")
+        raise AssertionError("should not re-fit — cache should have been used")
 
     monkeypatch.setattr(forecast_mod, "_select_best_order", _boom)
     second = build_forecast("cache_test", df, horizon=6, use_cache=True)

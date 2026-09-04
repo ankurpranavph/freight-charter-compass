@@ -97,19 +97,20 @@ def test_unknown_port_404(client):
 
 
 def test_commodity_prices_seeded(client):
-    # Whether this seeds the 6-row starter snapshot or the full ~1480-row
-    # World Bank history depends on whether data_pipeline/processed/
-    # commodity_prices_worldbank.csv exists locally (it's gitignored —
-    # present once you've run ingest_worldbank.py for real, absent on a
-    # fresh clone) -- seed.py prefers it when present, per its docstring.
-    # Both are correct outcomes; assert the invariant that holds either
-    # way rather than a fixed row count.
+    # Whether this seeds just the starter snapshot or the full ~1480-row
+    # World Bank history (and, once run for real, the RBA coking-coal
+    # history too) depends on which data_pipeline/processed/*.csv files
+    # exist locally (both gitignored — present once their ingest_*.py
+    # script has been run for real, absent on a fresh clone) -- seed.py
+    # layers whichever are present on top of the starter snapshot, per its
+    # docstring. All of these are correct outcomes; assert the invariant
+    # that holds either way rather than a fixed row count.
     r = client.get("/api/v1/commodity-prices")
     assert r.status_code == 200
     body = r.json()
-    assert len(body) >= 6  # at least the 3-month starter snapshot
+    assert len(body) >= 7  # at least the starter snapshot (3+3+1)
     commodities = {row["commodity"] for row in body}
-    assert commodities == {"coal_australian", "crude_oil_brent"}
+    assert commodities == {"coal_australian", "crude_oil_brent", "coking_coal"}
 
 
 def test_commodity_prices_filter(client):
@@ -142,6 +143,19 @@ def test_forecast_insufficient_data_with_starter_snapshot(client):
         # loaded and this legitimately returns a real forecast instead.
         assert body["status"] == "ok"
         assert len(body["forecast"]) > 0
+
+
+def test_coking_coal_forecast_insufficient_data(client):
+    # Unlike coal_australian/crude_oil_brent, coking_coal has exactly 1
+    # real seeded row (a single dated snapshot, DECISIONS.md #23) until the
+    # user runs ingest_rba_coking_coal.py for the real full RBA history --
+    # this is deterministic, not conditional on local processed-CSV state.
+    r = client.get("/api/v1/forecast/coking_coal")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "insufficient_data"
+    assert body["forecast"] == []
+    assert "ingest_rba_coking_coal.py" in body["note"]
 
 
 def test_data_sources_endpoint(client):

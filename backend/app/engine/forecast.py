@@ -8,28 +8,28 @@ the "Predict" step of Predict -> Simulate -> Optimize -> Recommend.
 APPROACH (see docs/DECISIONS.md #6 for why SARIMAX and not XGBoost/LSTM,
 and #13 for why there's no separate training script or pickled model):
 
-- Baseline: seasonal-naive - this month's forecast is the actual value
+- Baseline: seasonal-naive — this month's forecast is the actual value
   from the same month one year ago, cycling for horizons beyond 12
   months. A real model has to beat this on the SAME holdout to be worth
   showing a judge; if it doesn't, that's reported honestly, not hidden.
 - Primary model: SARIMAX (statsmodels). Order selection is a small,
-  curated grid search by AIC (CANDIDATE_ORDERS below) - not exhaustive
+  curated grid search by AIC (CANDIDATE_ORDERS below) — not exhaustive
   auto-ARIMA. This is a deliberate choice: it's explainable in one
   sentence ("we compared N standard candidate orders and kept the best
   AIC") rather than a black-box search, and it fits a hackathon time
   budget.
-- Evaluation: chronological train/holdout split - never randomly
+- Evaluation: chronological train/holdout split — never randomly
   shuffled, since that would leak future prices into training for a time
   series. MAE, RMSE, MAPE are reported for baseline and SARIMAX on the
   identical holdout window.
 - Deployment: the SAME order selected during evaluation is refit on the
   FULL series (train+holdout) to produce the forward-looking forecast,
   with a 95% CI from statsmodels' own get_forecast(). We deliberately do
-  NOT re-run the order search on the full series - using a different
+  NOT re-run the order search on the full series — using a different
   model for "the one we evaluated" vs. "the one we deployed" would be
   indefensible if a judge asked about it.
 - Fit-on-request, cached in memory for the life of the running process.
-  No separate training script or pickled artifact - avoids a pickle
+  No separate training script or pickled artifact — avoids a pickle
   version-compatibility trap and matches the "ingest once, compute at
   request time, no live external calls during a demo" architecture
   already used elsewhere in this app.
@@ -49,7 +49,15 @@ MIN_POINTS_FOR_SARIMAX = 30  # ~2.5 years; below this, seasonal terms are meanin
 DEFAULT_HOLDOUT = 12
 DEFAULT_HORIZON = 6
 
-# A small, curated set of candidate (order, seasonal_order) pairs - chosen
+# Which ingestion script loads the full history for each commodity — used
+# only to point an insufficient_data message at the right next step.
+INGEST_SCRIPT_BY_COMMODITY = {
+    "coal_australian": "data_pipeline/ingest_worldbank.py",
+    "crude_oil_brent": "data_pipeline/ingest_worldbank.py",
+    "coking_coal": "data_pipeline/ingest_rba_coking_coal.py",
+}
+
+# A small, curated set of candidate (order, seasonal_order) pairs — chosen
 # to cover the standard shapes for a trending + seasonal monthly commodity
 # price series, not an exhaustive search.
 CANDIDATE_ORDERS = [
@@ -135,7 +143,7 @@ def _fit_sarimax(series: np.ndarray, order: tuple, seasonal_order: tuple):
 def _select_best_order(train: np.ndarray):
     """Fit every candidate order on `train`, return (fit, spec, aic) for
     the lowest-AIC one that converged. A candidate that fails to converge
-    or errors out is skipped, not treated as fatal - real commodity data
+    or errors out is skipped, not treated as fatal — real commodity data
     is noisy enough that not every textbook order will fit cleanly."""
     best = None
     with warnings.catch_warnings():
@@ -148,7 +156,7 @@ def _select_best_order(train: np.ndarray):
             if best is None or fit.aic < best[2]:
                 best = (fit, (order, seasonal_order), fit.aic)
     if best is None:
-        raise RuntimeError("All candidate SARIMAX orders failed to fit - check the input series.")
+        raise RuntimeError("All candidate SARIMAX orders failed to fit — check the input series.")
     return best
 
 
@@ -172,14 +180,16 @@ def build_forecast(
     ]
 
     if len(prices) < MIN_POINTS_FOR_SARIMAX:
+        ingest_script = INGEST_SCRIPT_BY_COMMODITY.get(
+            commodity, "the appropriate data_pipeline/ingest_*.py script"
+        )
         result = ForecastResult(
             commodity=commodity,
             status="insufficient_data",
             note=(
                 f"Only {len(prices)} month(s) of history available; need at "
                 f"least {MIN_POINTS_FOR_SARIMAX} for a seasonal forecast. "
-                "Run data_pipeline/ingest_worldbank.py to load the full "
-                "World Bank Pink Sheet history."
+                f"Run {ingest_script} to load the full history."
             ),
             historical=historical,
             forecast=[],
@@ -207,7 +217,7 @@ def build_forecast(
     sarimax_metrics = _evaluate(test, sarimax_pred)
 
     # Refit the SAME selected order on the full series (train+holdout) for
-    # the actual forward-looking forecast - deliberately not re-searching,
+    # the actual forward-looking forecast — deliberately not re-searching,
     # see module docstring.
     order, seasonal_order = spec
     with warnings.catch_warnings():

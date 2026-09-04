@@ -13,7 +13,7 @@ function useOverviewData() {
 
     async function load() {
       try {
-        const [health, vessels, ports, originPorts, coal, oil] =
+        const [health, vessels, ports, originPorts, coal, oil, cokingCoal] =
           await Promise.all([
             api.health(),
             api.vessels(),
@@ -21,12 +21,13 @@ function useOverviewData() {
             api.originPorts(),
             api.commodityPrices("coal_australian"),
             api.commodityPrices("crude_oil_brent"),
+            api.commodityPrices("coking_coal"),
           ]);
         if (cancelled) return;
         setState({
           loading: false,
           error: null,
-          data: { health, vessels, ports, originPorts, coal, oil },
+          data: { health, vessels, ports, originPorts, coal, oil, cokingCoal },
         });
       } catch (err) {
         if (cancelled) return;
@@ -66,9 +67,10 @@ export default function Overview() {
     );
   }
 
-  const { vessels, ports, originPorts, coal, oil } = data;
+  const { vessels, ports, originPorts, coal, oil, cokingCoal } = data;
   const latestCoal = latestPrice(coal);
   const latestOil = latestPrice(oil);
+  const latestCokingCoal = latestPrice(cokingCoal);
   const verifiedPorts = ports.filter((p) => p.verified).length;
 
   return (
@@ -96,26 +98,39 @@ export default function Overview() {
           <span className="stat-label">Overseas loading ports</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{coal.length + oil.length}</span>
+          <span className="stat-value">
+            {coal.length + oil.length + cokingCoal.length}
+          </span>
           <span className="stat-label">Commodity price rows loaded</span>
         </div>
       </div>
 
-      {(latestCoal || latestOil) && (
+      {(latestCoal || latestOil || latestCokingCoal) && (
         <section className="section">
           <h2>Latest commodity prices</h2>
           <p className="section-note">
-            REAL — World Bank Pink Sheet, monthly. See{" "}
-            <code>docs/DECISIONS.md #12</code> for the ingestion pipeline.
+            REAL — coal/oil from the World Bank Pink Sheet (monthly), coking
+            coal from a single cited spot snapshot pending its own full RBA
+            ingestion run. See <code>docs/DECISIONS.md #12, #23</code>.
           </p>
           <div className="stat-row">
+            {latestCokingCoal && (
+              <div className="stat-card">
+                <span className="stat-value">
+                  ${latestCokingCoal.price_usd.toFixed(2)}
+                </span>
+                <span className="stat-label">
+                  Coking coal (Australian), {latestCokingCoal.date}
+                </span>
+              </div>
+            )}
             {latestCoal && (
               <div className="stat-card">
                 <span className="stat-value">
                   ${latestCoal.price_usd.toFixed(2)}
                 </span>
                 <span className="stat-label">
-                  Coal (Australian), {latestCoal.date}
+                  Coal (Australian, thermal), {latestCoal.date}
                 </span>
               </div>
             )}

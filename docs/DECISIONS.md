@@ -818,3 +818,136 @@ session — all 5 changed files matched byte-for-byte on the first
 `sha256sum` check, no transcription errors this time. Worth preferring
 this path going forward: it removes the manual-reconstruction step
 entirely rather than just verifying after the fact.
+
+## 23. Coking coal proxy fix — SAIL procures metallurgical coal, not the thermal coal the World Bank Pink Sheet tracks
+
+Raised by the user asking whether the app actually satisfies the SIH26006
+problem statement. Answer at the time: mostly yes on the Predict->Simulate->
+Optimize->Recommend pipeline, but with two named gaps -- this decision
+closes the more substantive of the two (the other, cross-port
+recommendation, is a separate follow-up module, not yet started).
+
+**The gap:** `coal_australian` (the only coal series in this app until now)
+is the World Bank Pink Sheet's "Coal, Australia" line -- confirmed by
+fetching the real Pink Sheet's column headers directly: it lists only
+thermal coal varieties (Australia/Colombia/South Africa), no coking coal at
+all. SAIL is a steel maker; it procures coking (metallurgical) coal for
+blast furnaces, not thermal coal for power generation. The two commodities
+move somewhat together but are priced on different markets and have
+diverged meaningfully at times (thermal coal was ~$132-139/t across
+May-July 2026 in this app's own seeded data; coking coal's real FOB
+Australia price ranged roughly $215-241/t across the same window per the
+sources below) -- treating one as a stand-in for the other would have been
+a real, if easy-to-miss, proxy error against a Ministry-of-Steel problem
+statement.
+
+**Why RBA over the alternatives, researched before writing any code:**
+- World Bank Pink Sheet: confirmed (again, directly) to have no coking
+  coal line at all -- ruled out.
+- FRED series IQ11010 ("Export Price Index (End Use): Metallurgical Grade
+  Coal", US BLS): genuinely metallurgical-grade, but starts January 2025 --
+  only ~18 months of history as of this build, below this app's own
+  30-month SARIMAX floor (`MIN_POINTS_FOR_SARIMAX`), and it's a US export
+  price INDEX (base 100), not an Australian-origin $/tonne benchmark
+  matching this app's own NEWCASTLE_AU origin port. Ruled out.
+- RBA's Index of Commodity Prices: confirmed via RBA's own July 2026
+  release commentary that "coking coal" and "thermal coal" are tracked as
+  distinct named components. Australian-origin (matches NEWCASTLE_AU), and
+  the RBA's ICP has run for decades, so real historical depth is expected
+  once ingested -- chosen as the target series.
+
+**The real network constraint, same as DECISIONS.md #10:** confirmed by a
+direct connection test that Claude's execution environments (cloud sandbox
+and the device-bridge shell) cannot reach rba.gov.au -- same
+organisation-level egress policy already documented for thedocs.worldbank.org
+and fred.stlouisfed.org. `data_pipeline/ingest_rba_coking_coal.py` is real,
+defensively-written code, but -- like `ingest_worldbank.py` before it --
+has not been run against the real `i02hist.xlsx` file by Claude. The user
+needs to run it once, in their own terminal with normal internet, exactly
+the same one-time step already established for the World Bank ingestion.
+
+**UNLIKE `ingest_worldbank.py`, this parser's layout is unverified, not
+just untested.** The World Bank parser's dynamic-detection logic was
+written and confirmed against a real downloaded copy of the file (see
+DECISIONS.md #12's transposed-layout correction). This RBA parser's
+assumed layout -- a metadata block with one label per row in column A
+(Description/Frequency/Type/Unit/Source/Publication date/Series ID), then
+dated data rows below -- is built from RBA's well-documented standard
+statistical-table convention, not a confirmed dump of the real file. Every
+lookup is done by SEARCHING for a label or a date-shaped column/row rather
+than a hardcoded position, specifically so a real-layout surprise (same
+shape as #12) still has a real chance of being found automatically -- but
+this is flagged plainly in the module's own docstring and its test file's
+docstring: a first real run may reveal the layout differs and need a
+follow-up parser fix. That would not be a failure, just the same honest
+process #12 already went through once.
+
+**What's real and live right now, without the user running anything:** one
+real, dated, cited coking-coal price point -- $214.90/tonne, FOB Australia,
+7 August 2026, from IndexBox citing a Fastmarkets-style high-quality coking
+coal assessment (a single spot-day snapshot, explicitly labelled as such,
+not averaged into a fake "month" the way the real monthly WB data is).
+Seeded via `commodity_prices_seed.csv` alongside the existing 3-month
+coal/oil starter rows. This is NOT a substitute for the real monthly
+series -- with 1 row, `GET /api/v1/forecast/coking_coal` correctly returns
+`status: "insufficient_data"`, now pointing the user at
+`ingest_rba_coking_coal.py` specifically (a real small bug caught while
+building this: the insufficient_data message was hardcoded to always
+recommend `ingest_worldbank.py`, which would have been actively wrong
+advice for any future non-WB-sourced commodity -- fixed via a
+per-commodity `INGEST_SCRIPT_BY_COMMODITY` lookup in `forecast.py` rather
+than a second hardcode).
+
+**Also fixed while building this:** the Data Sources catalog's
+`_commodity_price_entries()` used to unconditionally describe every
+commodity row-group as "monthly price history" -- correct for
+coal_australian/crude_oil_brent (3+ real months each) but actively
+misleading for coking_coal's single spot-day point. Now branches on
+`n == 1` to say "single dated snapshot" instead, with a detail pointing at
+the real ingestion script -- caught by writing the Data Sources page
+change in the first place, not by a bug report.
+
+**Kept, not replaced:** `coal_australian` (thermal) stays in the app,
+relabelled everywhere from "Coal (Australian)" to "Coal (Australian,
+thermal)" so the thermal/coking distinction is explicit rather than
+implied. It remains the Forecast page's default selection (680 real
+months, a working forecast on first load) -- coking_coal is listed FIRST
+in the commodity picker (it's the one that matters to SAIL) but is not the
+default, specifically so the page's first paint shows a working forecast
+rather than an (honest, but less demo-friendly) insufficient-data message.
+Overview's "Latest commodity prices" section gained a third stat tile,
+coking coal shown first.
+
+**Schema:** no migration needed -- `commodity` was already a free-text
+column. Comment updated to list the third value and to note `date` may now
+be an exact single-snapshot date, not only first-of-month, and `unit` may
+be whatever `ingest_rba_coking_coal.py`'s real run actually reports (the
+parser reads the file's own Unit row rather than assuming `usd_per_tonne`
+-- if RBA's ICP turns out to publish coking coal as an index-points figure
+rather than a raw price, this parser will report that honestly rather than
+mislabel it).
+
+**seed.py redesigned to layer multiple processed CSVs**, not just prefer
+one: starter snapshot (always) -> `commodity_prices_worldbank.csv` (if
+ingested) -> `commodity_prices_rba_coking.csv` (if ingested), each via
+`INSERT OR REPLACE` keyed on (date, commodity) same as before -- so running
+just the RBA script, without re-running the World Bank one, works
+correctly, and vice versa.
+
+Test coverage: 9 new tests in `test_ingest_rba_coking_coal.py` (mirroring
+`test_ingest_worldbank.py`'s style -- label search, date-column search,
+target-column search, unit extraction, and the full parse, plus clear-error
+cases for a missing label row or missing coking-coal column) against a
+synthetic file matching the ASSUMED (not confirmed) layout; 1 new
+`test_forecast.py` test asserting the insufficient_data note names the
+right script per commodity; 1 new `test_health.py` API test asserting
+`GET /api/v1/forecast/coking_coal` deterministically returns
+insufficient_data with that same script name (deterministic, unlike the
+existing coal_australian test, since coking_coal always has exactly 1
+seeded row regardless of local processed-CSV state); the existing
+commodity-set assertion in `test_commodity_prices_seeded` extended to
+include `coking_coal`. **98 passing tests total** (up from 87). Verified
+end-to-end in a sandbox headless browser: Overview's third stat tile,
+Forecast's honest insufficient-data message (correct script name), and
+Data Sources' "single dated snapshot" wording all render correctly, zero
+console errors, `npm run build` clean.
