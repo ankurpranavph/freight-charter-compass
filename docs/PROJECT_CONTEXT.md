@@ -69,8 +69,13 @@ arithmetic at request time (no live external calls during a demo).
 
 - Backend: Python 3.10+, FastAPI, plain `sqlite3` (stdlib) — no ORM at this
   stage, see DECISIONS.md.
-- Frontend: React + Vite + TypeScript (not yet built — see TODO.md).
-- Charts: Recharts. Map: React-Leaflet. (not yet built)
+- Frontend: React + Vite, plain JavaScript (not TypeScript — see
+  DECISIONS.md #18), `react-router-dom` for a 3-page shell (Overview /
+  Forecast / Recommendation), and a hand-written fetch client
+  (`frontend/src/api/client.js`) — no generated API client. CORS on the
+  backend is scoped to the Vite dev server's two localhost origins only.
+- Charts: not yet built (planned for the Forecast page, next step).
+  Map: not planned for the MVP (not in the locked 5-page scope).
 - Database: SQLite file (`backend/freight.db`, gitignored, rebuilt from seed
   JSON on every app startup).
 - ML: statsmodels (SARIMAX) + numpy for hand-rolled MAE/RMSE/MAPE — no
@@ -253,9 +258,19 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
   optimizer-engine + 12 book-or-wait).
 
+- **Frontend shell started (Hour 17-23, in progress):** React + Vite,
+  plain JavaScript (DECISIONS.md #18), `react-router-dom` 3-page shell.
+  The Overview page is fully wired to live data — fleet, ports, origin
+  ports, latest commodity prices, and a data-honesty panel — verified
+  end-to-end in a sandbox (headless browser, zero console errors) before
+  reaching the user's machine. Forecast and Recommendation pages are
+  routed but still placeholder text, pending charting and the
+  port/cargo picker UI. Backend gained a scoped CORS policy
+  (`localhost:5173` only) to allow this.
+
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and the
-entire frontend (Hour 17-23 onward) — see TODO.md for the exact next
+Forecast/Recommendation page content — see TODO.md for the exact next
 step.
 
 ## Important assumptions

@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.connection import db_session
 from app.db.seed import run_seed
 from app.engine.book_or_wait import DEFAULT_DECISION_HORIZON, evaluate_book_or_wait
@@ -31,6 +32,24 @@ app = FastAPI(
     description="Decision support for overseas bulk-cargo vessel chartering — SIH26006.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# The frontend (Vite dev server, default http://localhost:5173) is a
+# different origin from this API (http://localhost:8000), so the browser
+# blocks fetch() calls between them without explicit CORS headers. This
+# is a hackathon demo running entirely on localhost — not a public
+# deployment — so a small fixed allowlist of local dev origins is the
+# right scope; it is not "allow *" and does not need to be, since there's
+# no browser-facing production deployment of this API planned (see
+# DECISIONS.md #7 on the 5-page MVP scope).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 
 

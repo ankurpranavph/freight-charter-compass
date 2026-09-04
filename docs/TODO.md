@@ -31,10 +31,9 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-None open. Modules 1 and 4-7 (forecast, compatibility, voyage cost, cost
-optimizer, book-now-vs-wait) are all done and tested — the full "Decision
-engine" block (Hour 13-17) is complete. Next up: Hour 17-23, the frontend
-shell — see "Remaining" below.
+Frontend shell (Hour 17-23) is in progress: scaffold, routing, API
+client, and the Overview page are done and verified; Forecast and
+Recommendation pages are routed placeholders, next up.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -121,8 +120,28 @@ shell — see "Remaining" below.
       3 against real seeded data — asserting shape/contract, not a pinned
       verdict, since the actual decision legitimately depends on the
       latest real price whenever the test runs). 72 total now.
-- [ ] **Frontend shell (Hour 17–23):** React+Vite scaffold, Overview /
-      Forecast / Recommendation pages wired to the live API.
+- [ ] **Frontend shell (Hour 17-23), in progress:** React+Vite scaffold
+      (plain JavaScript, not TypeScript — see DECISIONS.md #18),
+      `react-router-dom` 3-page shell with a shared Layout/nav
+      (`frontend/src/components/Layout.jsx`) and a hand-written fetch
+      client (`frontend/src/api/client.js`).
+      - [x] Overview page: fleet, ports, origin ports, latest commodity
+            prices, and a data-honesty panel, all fetched live from the
+            API. Verified end-to-end in a sandbox (headless browser
+            against a running backend + Vite dev server) before pushing:
+            real data renders, routing works, zero console errors, and
+            the "backend not running" error state is a clear message,
+            not a blank page.
+      - [x] Backend: added a CORS policy scoped to the Vite dev server's
+            two localhost origins (`localhost:5173` / `127.0.0.1:5173`,
+            GET only) — see DECISIONS.md #18.
+      - [ ] Forecast page: chart the SARIMAX vs. seasonal-naive forecast
+            (Module 1) plus the book-now-vs-wait verdict (Module 7).
+            Currently a routed placeholder.
+      - [ ] Recommendation page: port + cargo picker driving the
+            optimizer ranking (Module 6) with compatibility reasoning
+            (Module 4) visible per option. Currently a routed
+            placeholder.
 - [ ] **Frontend, rest of MVP (Hour 23–27):** Cost Optimization page, Data
       Sources & Assumptions page generated from `/api/v1/data-sources`.
 - [ ] **Checkpoint (Hour 27–29):** if on schedule, add ports 4–6

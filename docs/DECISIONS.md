@@ -440,3 +440,57 @@ actual verdict depends on the latest real World Bank price at whatever
 moment the test runs, which will legitimately change over time. Pinning
 an exact verdict in a test would be pinning today's market, not the
 code's correctness.
+
+## 18. Frontend: plain JavaScript React (not TypeScript), a thin fetch client, and CORS scoped to localhost
+
+**Decision:** the frontend is React + Vite in plain JavaScript (`.jsx`),
+not TypeScript as originally planned in PROJECT_CONTEXT.md's technology
+stack list, with `react-router-dom` for a 3-page shell (Overview,
+Forecast, Recommendation) and a single hand-written fetch wrapper
+(`src/api/client.js`) instead of a generated API client.
+
+**Why JavaScript, not TypeScript, deviating from the original plan:**
+this is a 3-page dashboard consuming a small, already-documented REST
+API (every endpoint's shape is defined and tested on the backend, see
+`app/main.py`'s docstrings). TypeScript's payoff is catching a mismatch
+between what the frontend expects and what the API actually returns —
+here that contract is already enforced by 72 passing backend tests and
+FastAPI's own response validation, and a runtime `ApiError` in
+`client.js` surfaces a mismatch immediately during manual testing
+anyway. Adding TypeScript would mean a `tsconfig`, type definitions for
+every API response shape, and more build friction, for a hackathon-scale
+app with one frontend developer and a hard deadline — not a good
+trade here. This mirrors the same reasoning as #7 (5-page MVP, not 7)
+and #13 (no separate training script): match the tooling to the actual
+size of the problem, not the size a "proper" production app would
+eventually need.
+
+**CORS scoped to two localhost origins, not `allow_origins=["*"]`:**
+the Vite dev server runs on `http://localhost:5173` by default, a
+different origin from the API's `http://localhost:8000`, so the browser
+blocks the frontend's `fetch()` calls without explicit CORS headers.
+The allowlist in `app/main.py` is exactly `localhost:5173` and
+`127.0.0.1:5173` — GET only. This app has no public deployment planned
+(it's a local demo, per the 5-page MVP scope), so there's no reason to
+open the API to arbitrary origins; a fixed small allowlist is the
+correct scope, not a shortcut that would need tightening later.
+
+**Verified before pushing to the user's machine:** built the full scaffold
+in a sandbox first (same pattern as every backend module), started both
+the FastAPI backend and the Vite dev server, and used a headless browser
+to load the Overview page end-to-end — confirmed it fetches and renders
+real data from all 5 endpoints it calls (health, vessels, ports,
+origin-ports, commodity-prices for both commodities) with zero console
+errors, confirmed client-side routing works between all three pages, and
+confirmed the error state (backend not running) renders a clear,
+actionable message rather than a blank page or a raw fetch exception.
+`npm run build` was also verified clean in the sandbox before this went
+to the user's machine.
+
+**Scope of this pass:** Overview page is fully wired to live data
+(fleet, ports, origin ports, latest commodity prices, and a data-honesty
+panel restating the REAL/CALCULATED/SIMULATED/ASSUMPTION breakdown for
+what's shown). Forecast and Recommendation pages are routed but
+currently placeholder text — they're the next build step, once charting
+(Forecast, Module 1 + 7) and the interactive port/cargo picker
+(Recommendation, Module 4 + 6) are built out.

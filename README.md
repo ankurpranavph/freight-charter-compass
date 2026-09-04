@@ -16,9 +16,14 @@ they are: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Status
 
-Hour 0–2 (setup) complete: schema, seed data (4 vessel classes, 3 ports),
-FastAPI skeleton with 3 working endpoints, 6 passing tests. Everything from
-the compatibility engine onward is not yet built — see TODO.md.
+Backend is functionally complete for the MVP's decision-engine: real
+ingested commodity price history, a SARIMAX forecast model, a physical
+vessel/port compatibility gate, a voyage cost calculator, a risk-adjusted
+optimizer, and a book-now-vs-wait recommendation — 72 passing tests, all
+wired into the running API. The frontend shell (React + Vite) has started:
+routing and the Overview page are live against the real API; the Forecast
+and Recommendation pages are still placeholders. See TODO.md for the exact
+punch list.
 
 ## Quick start (backend)
 
@@ -49,7 +54,18 @@ full breakdown and source URLs. Nothing here is claimed to be SAIL's actual
 procurement data; the goal is a defensible decision-support *method* built
 on real public data where it exists.
 
-## Frontend
+## Quick start (frontend)
 
-Not yet built (`frontend/` is currently empty) — see `docs/TODO.md` for
-when it starts.
+Needs the backend running first (see above) — the frontend fetches live
+data from `http://localhost:8000` and shows a clear error if it can't
+reach it.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open the URL Vite prints (default `http://localhost:5173`). The
+Overview page is fully live; Forecast and Recommendation are placeholders
+for now — see `docs/TODO.md`.
