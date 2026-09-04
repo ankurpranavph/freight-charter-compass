@@ -182,6 +182,38 @@ def _voyage_cost_entries() -> list:
     ]
 
 
+def _port_traffic_entries(conn) -> list:
+    rows = conn.execute(
+        "SELECT * FROM port_traffic_history ORDER BY port_id, month"
+    ).fetchall()
+    port_names = {
+        r["port_id"]: r["name"]
+        for r in conn.execute("SELECT port_id, name FROM ports").fetchall()
+    }
+    entries = []
+    for r in rows:
+        row = dict(r)
+        name = port_names.get(row["port_id"], row["port_id"])
+        entries.append(
+            _entry(
+                f"{name} — {row['commodity']}, {row['volume_tonnes']:,.0f}t ({row['month']})",
+                "REAL",
+                detail=row.get("note"),
+                source=row.get("source"),
+                source_url=row.get("source_url"),
+            )
+        )
+    if not entries:
+        entries.append(
+            _entry(
+                "Port cargo-handling records",
+                "REAL",
+                detail="No rows loaded yet in this database.",
+            )
+        )
+    return entries
+
+
 def _currency_entries() -> list:
     return [
         _entry(
@@ -282,6 +314,13 @@ def build_data_sources(conn) -> dict:
             {
                 "category": "Voyage cost inputs",
                 "entries": _voyage_cost_entries(),
+            },
+            {
+                "category": (
+                    "Port cargo-handling records (individually reported "
+                    "events, not a monthly series — see each entry's detail)"
+                ),
+                "entries": _port_traffic_entries(conn),
             },
             {
                 "category": "Currency conversion",

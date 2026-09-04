@@ -121,6 +121,35 @@ def seed_commodity_prices(conn) -> int:
     return n, paths
 
 
+def seed_port_traffic(conn) -> int:
+    """One individually-reported coal-handling record per port -- never a
+    monthly aggregate, see schema.sql's table comment and DECISIONS.md
+    #26 for why no real monthly series exists for these 6 ports through
+    any freely-accessible source. Same CSV-layering shape as the other
+    seed_* functions, but there is currently only ever one source file
+    for this table -- kept as a loop (not a single INSERT) so a second,
+    independently-researched batch can be added later the same way
+    commodity prices layer on top of the starter snapshot."""
+    path = DATA_DIR / "port_traffic_seed.csv"
+    n = 0
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO port_traffic_history
+                    (month, port_id, commodity, volume_tonnes, note, source, source_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["month"], row["port_id"], row["commodity"],
+                    float(row["volume_tonnes"]), row.get("note"),
+                    row.get("source"), row.get("source_url"),
+                ),
+            )
+            n += 1
+    return n
+
+
 def run_seed() -> None:
     init_db()
     with db_session() as conn:
@@ -128,11 +157,12 @@ def run_seed() -> None:
         n_ports = seed_ports(conn)
         n_origin_ports = seed_origin_ports(conn)
         n_prices, price_sources = seed_commodity_prices(conn)
+        n_traffic = seed_port_traffic(conn)
     sources_str = ", ".join(p.name for p in price_sources)
     print(
         f"Seeded {n_vessels} vessel classes, {n_ports} ports, "
         f"{n_origin_ports} origin ports, {n_prices} commodity-price rows "
-        f"(from {sources_str})."
+        f"(from {sources_str}), {n_traffic} port-traffic records."
     )
 
 

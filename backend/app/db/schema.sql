@@ -52,11 +52,26 @@ CREATE TABLE IF NOT EXISTS commodity_price_history (
     PRIMARY KEY (date, commodity)
 );
 
+-- Populated at the Indian-port-traffic checkpoint (DECISIONS.md #26).
+-- shipmin.gov.in / data.gov.in / IPA are network-blocked from every
+-- environment this app has been built in (same organisation-level egress
+-- block as thedocs.worldbank.org and rba.gov.au -- DECISIONS.md #10), and
+-- no freely-accessible, structured, coal-specific MONTHLY series exists
+-- for these 6 ports anywhere else either. What IS real and citable: one
+-- individually-reported coal-handling record per port, found via
+-- targeted research -- a 24-hour discharge record, a single shipment, a
+-- berth record -- never a monthly aggregate. `month` holds the event's
+-- own date (or the first of the month, if only the month is known), NOT
+-- a full-month total unless `note` says so. Every row's `note` states
+-- plainly what the figure actually measures; rows are NOT comparable to
+-- each other (different years, different measurement windows) and are
+-- NOT used by any ranking/decision logic in this app -- context only.
 CREATE TABLE IF NOT EXISTS port_traffic_history (
-    month       TEXT NOT NULL,        -- ISO date, first-of-month
+    month       TEXT NOT NULL,        -- the event's own date, or first-of-month if only the month is known -- see table comment
     port_id     TEXT NOT NULL REFERENCES ports(port_id),
     commodity   TEXT NOT NULL,
     volume_tonnes REAL NOT NULL,
+    note        TEXT,                 -- what this figure actually measures (24hr record / single shipment / berth record, scope caveats) -- required reading before treating it as a monthly total
     source      TEXT,
     source_url  TEXT,
     PRIMARY KEY (month, port_id, commodity)

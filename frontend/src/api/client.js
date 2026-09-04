@@ -87,6 +87,7 @@ export const api = {
     request(`/api/v1/decision/book-vs-wait/${commodity}`, { horizon }),
   dataSources: () => request("/api/v1/data-sources"),
   exchangeRate: () => request("/api/v1/exchange-rate"),
+  portTraffic: () => request("/api/v1/port-traffic"),
 };
 
 export { ApiError };

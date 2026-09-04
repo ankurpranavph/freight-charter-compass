@@ -148,9 +148,14 @@ not created speculatively upfront.
   USD->INR rate the frontend uses to show a secondary INR figure
   alongside every USD one it does. USD stays the source-of-truth
   currency everywhere else in the engine and API (DECISIONS.md #25).
+- `GET /api/v1/port-traffic?port_id=` — one individually-reported real
+  coal-handling record per East Coast port (a 24-hour discharge record,
+  a single shipment, a berth record — never a monthly aggregate; see
+  DECISIONS.md #26 for why no real monthly series exists). Optional
+  filter; an unknown port returns `[]`, not 404.
 - `GET /api/v1/data-sources` — the Data Sources & Assumptions page's own
   catalog: every REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app
-  uses, in 7 categories, read live from the same seeded rows and cited
+  uses, in 8 categories, read live from the same seeded rows and cited
   constants the rest of the API already uses rather than a separate
   hand-maintained list (DECISIONS.md #21).
 
@@ -406,10 +411,26 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   Also its own new category on the Data Sources page. 5 new tests plus 2
   updated — **113 passing tests total.** See DECISIONS.md #25.
 
+**Indian port traffic history:** the last item from the original
+SIH26006 gap-check. Direct network access to shipmin.gov.in/data.gov.in/
+IPA is blocked the same way as thedocs.worldbank.org/rba.gov.au
+(DECISIONS.md #10), and extensive targeted research turned up no
+freely-accessible, structured, coal-specific MONTHLY series for any of
+the 6 ports through any source. Surfaced to the user directly rather
+than fabricated or silently skipped; the user chose to seed the real
+one-off facts that targeted research could find, clearly labelled.
+`port_traffic_history` gained a `note` column and 6 real, individually-
+sourced, individually-captioned records — a 24-hour discharge record, a
+single shipment, or a berth record per port, spanning 2016-2026,
+explicitly not comparable to each other or to a "typical month." New
+`GET /api/v1/port-traffic?port_id=`, an 8th Data Sources category, and
+a new Overview page section stating the "not comparable" framing
+plainly. 7 new tests — **120 passing tests total.** See DECISIONS.md
+#26.
+
 **Not yet built:** the real RBA coking-coal ingestion has not been run
 for real by anyone yet (script exists, layout unverified — see
-DECISIONS.md #23); and Indian port traffic history — see TODO.md for
-exact next steps.
+DECISIONS.md #23) — see TODO.md for exact next steps.
 
 ## Important assumptions
 

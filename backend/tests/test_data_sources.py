@@ -11,7 +11,7 @@ def test_build_data_sources_shape():
         payload = build_data_sources(conn)
 
     assert "categories" in payload
-    assert len(payload["categories"]) == 7
+    assert len(payload["categories"]) == 8
     for cat in payload["categories"]:
         assert cat["category"]
         assert isinstance(cat["entries"], list)
@@ -93,6 +93,23 @@ def test_voyage_cost_inputs_cite_the_same_constants_voyage_engine_uses():
     assert TIME_CHARTER_SOURCE in sources
     for entry in cat["entries"]:
         assert entry["classification"] == "ASSUMPTION"
+
+
+def test_port_traffic_entries_are_real_and_individually_captioned():
+    with db_session() as conn:
+        payload = build_data_sources(conn)
+
+    cat = next(
+        c for c in payload["categories"] if c["category"].startswith("Port cargo-handling")
+    )
+    assert len(cat["entries"]) == 6  # one real reported event per port
+    for entry in cat["entries"]:
+        assert entry["classification"] == "REAL"
+        assert entry["source"]
+        # every entry must explain what it actually measures -- these are
+        # single events, never a monthly aggregate, so the caption is not
+        # optional the way it is for, say, a vessel spec row.
+        assert entry["detail"]
 
 
 def test_currency_entry_cites_the_same_rate_the_endpoint_uses():

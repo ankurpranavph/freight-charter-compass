@@ -15,7 +15,7 @@ function useOverviewData() {
 
     async function load() {
       try {
-        const [health, vessels, ports, originPorts, coal, oil, cokingCoal] =
+        const [health, vessels, ports, originPorts, coal, oil, cokingCoal, portTraffic] =
           await Promise.all([
             api.health(),
             api.vessels(),
@@ -24,12 +24,13 @@ function useOverviewData() {
             api.commodityPrices("coal_australian"),
             api.commodityPrices("crude_oil_brent"),
             api.commodityPrices("coking_coal"),
+            api.portTraffic(),
           ]);
         if (cancelled) return;
         setState({
           loading: false,
           error: null,
-          data: { health, vessels, ports, originPorts, coal, oil, cokingCoal },
+          data: { health, vessels, ports, originPorts, coal, oil, cokingCoal, portTraffic },
         });
       } catch (err) {
         if (cancelled) return;
@@ -70,7 +71,7 @@ export default function Overview() {
     );
   }
 
-  const { vessels, ports, originPorts, coal, oil, cokingCoal } = data;
+  const { vessels, ports, originPorts, coal, oil, cokingCoal, portTraffic } = data;
   const latestCoal = latestPrice(coal);
   const latestOil = latestPrice(oil);
   const latestCokingCoal = latestPrice(cokingCoal);
@@ -240,6 +241,50 @@ export default function Overview() {
         </div>
       </section>
 
+      {portTraffic.length > 0 && (
+        <section className="section">
+          <h2>Notable port coal-handling records</h2>
+          <p className="section-note">
+            REAL, but each row is one individually-reported real event — a
+            24-hour discharge record, a single shipment, a berth record —
+            never a monthly total, and not comparable to each other (they
+            span {new Set(portTraffic.map((r) => r.month.slice(0, 4))).size}{" "}
+            different years). shipmin.gov.in / data.gov.in / IPA don't
+            publish a freely-accessible monthly coal-traffic series for
+            these ports, so this is what real, individually-cited reporting
+            actually turns up — not a substitute for one. See{" "}
+            <code>docs/DECISIONS.md #26</code>.
+          </p>
+          <div className="source-list">
+            {portTraffic.map((r) => {
+              const port = ports.find((p) => p.port_id === r.port_id);
+              return (
+                <div className="source-entry" key={`${r.port_id}-${r.month}`}>
+                  <div className="source-entry-head">
+                    <span className="source-entry-label">
+                      {port ? port.name : r.port_id} — {r.volume_tonnes.toLocaleString()}t{" "}
+                      {r.commodity.replace(/_/g, " ")} ({r.month})
+                    </span>
+                  </div>
+                  {r.note && <p className="source-entry-detail">{r.note}</p>}
+                  {(r.source || r.source_url) && (
+                    <p className="source-entry-citation">
+                      {r.source_url ? (
+                        <a href={r.source_url} target="_blank" rel="noreferrer">
+                          {r.source || r.source_url}
+                        </a>
+                      ) : (
+                        r.source
+                      )}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="section">
         <h2>Overseas loading ports</h2>
         <p className="section-note">
@@ -282,7 +327,8 @@ export default function Overview() {
           <dd>
             World Bank commodity prices, port draft/LOA/beam limits,
             overseas port coordinates, bunker fuel price and time-charter
-            rates — all cited, dated, and sourced (see each table above and
+            rates, and the individually-reported port coal-handling records
+            above — all cited, dated, and sourced (see each table above and
             the Forecast/Recommendation pages).
           </dd>
           <dt>CALCULATED</dt>

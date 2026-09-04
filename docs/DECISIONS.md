@@ -1102,3 +1102,117 @@ conversion arithmetic, the `as_dict()` shape, the live endpoint) plus 2
 updated (`test_data_sources_endpoint`'s category count, a new dedicated
 currency-category test) — **113 passing tests total** (up from 108).
 Zero console errors across all 4 pages, clean `npm run build`.
+
+## 26. Indian port traffic history — a genuine data-availability wall, resolved by asking rather than fabricating
+
+The last open TODO item after coking coal (#23), cross-port
+recommendation (#24), and INR (#25): populate `port_traffic_history`
+with real monthly coal-traffic figures for the 6 East Coast ports.
+
+**The wall, confirmed two ways before it was treated as real:**
+direct network tests (`curl`/`python`, both from the cloud sandbox and
+from this device bridge) to `shipmin.gov.in`, `data.gov.in`, and
+`ipa.nic.in` all failed the same way as `thedocs.worldbank.org` and
+`rba.gov.au` did back at DECISIONS.md #10 — `connect_rejected
+(organization policy)` / a 403 on the CONNECT tunnel. That rules out
+programmatic ingestion, same as before. But this time targeted
+`WebSearch`/`WebFetch` research (a separate fetch path that isn't
+subject to the same block) also turned up no freely-accessible,
+structured, coal-specific MONTHLY series for any of the 6 ports,
+through any source — not shipmin, not data.gov.in, not a port
+authority's own site, not a industry-tracker mirror. Unlike the coking-
+coal case (#23), there was no substitute monthly series to fall back
+on either.
+
+**Rather than fabricate a plausible-looking series or quietly drop the
+feature, this was surfaced to the user directly** with three real
+options: seed the few genuinely real one-off facts that targeted
+research *could* find, clearly labelled as such; skip the feature
+entirely and document the gap as a limitation (the same treatment
+DECISIONS.md #10 gives the Baltic Exchange route-level rates); or spend
+more time searching. The user chose the first. This is the same
+anti-fabrication discipline as every other REAL/CALCULATED/SIMULATED/
+ASSUMPTION line in this app — the honest answer here was "no monthly
+series exists," and the app says exactly that rather than implying
+otherwise.
+
+**What targeted research actually found:** one individually-reported,
+citable coal-handling record per port — never a monthly aggregate. A
+24-hour discharge record, a single shipment, or a berth record,
+depending on what each port's own reporting happened to cover:
+
+- Visakhapatnam (VGCB terminal): 1,06,190t steam coal, a 24-hour slice
+  of a 53.5-hour, 1,64,960t total discharge from MV Gina Oldendorff,
+  14–16 Apr 2025 (VisCan / India Shipping News).
+- Paradip: 62,730t coking coal, a 24-hour discharge record from MV
+  Pacific Energy, Jan 2017 (MarineLink) — the oldest and most dated of
+  the six.
+- Dhamra: 55,450t thermal coal, Berth BB-3, Apr 2025 — the source
+  doesn't state whether this is a single-day or full-month figure, so
+  the measurement window is flagged as unconfirmed, not asserted as a
+  monthly total (Adani Ports & SEZ FY2026 digital operational report).
+- Krishnapatnam: 58,594t coal, a 24-hour discharge record, Oct 2025,
+  exact date not stated (same Adani FY2026 report).
+- Gangavaram: 1,56,339t non-coking coal, a 24-hour discharge record
+  from MV Cape Asia, Apr 2016 (AL Circle / Construction & Architecture)
+  — an "all-India record" claim at the time, and the oldest along with
+  Paradip.
+- Haldia: 27,100t thermal coal, a single coastal shipment to Andhra
+  Pradesh Power Development Company Ltd marking Haldia's resumption of
+  thermal coal handling after a 9-month gap, Jul 2026 (ITLN).
+
+These 6 rows span **2016–2026**, use different measurement windows
+(single-shipment / 24-hour-slice-of-a-longer-discharge / unconfirmed
+berth window), and are explicitly **not comparable to each other or to
+a "typical month" for that port** — reading them as a trend would be
+worse than not having them at all, so the schema and UI both work to
+prevent that reading.
+
+**Schema:** `port_traffic_history` gained a `note TEXT` column (new —
+the commodity-price tables didn't need this, since row count alone
+told you "snapshot" vs. "series" there; here every row needs its own
+explanation of what it actually measures, since the six rows are
+individually heterogeneous rather than uniformly one or the other).
+`month` holds the event's own date (or first-of-month if the source
+only gave a month), never a full-month total unless the note says so.
+New seed file `backend/app/data/port_traffic_seed.csv`, loaded by a new
+`seed_port_traffic()` in `seed.py` — kept as a row-by-row loop (not a
+single INSERT) so a second, independently-researched batch can layer
+on top later the same way the commodity-price seeds do.
+
+**Backend:** new `GET /api/v1/port-traffic?port_id=` — optional filter,
+returns `[]` for an unknown port rather than 404 (same honest "real
+port, nothing to show" shape as `/api/v1/optimize/HALDIA` before Haldia
+had compatible options). Also wired into `data_sources.py` as an 8th
+Data Sources category, "Port cargo-handling records (individually
+reported events, not a monthly series — see each entry's detail)" — 6
+entries, all REAL, each carrying its own `note` as the entry's detail
+rather than a bare citation.
+
+**Frontend:** a new "Notable port coal-handling records" section on the
+Overview page, between the East Coast ports table and the overseas
+loading ports table — one card per record (port, tonnage, commodity,
+date, the full note, and a working source link), with the section's own
+copy stating plainly that these span multiple years, aren't comparable
+to each other, and exist because no freely-accessible monthly series
+does.
+
+**Test coverage:** new `test_port_traffic.py` (6 tests: exactly one row
+per port and no more, every row has a note/source/positive volume, the
+years genuinely span more than one — a real assertion that this is NOT
+a series clustered in one convenient month, the endpoint returns all 6,
+the `?port_id=` filter, and the unknown-port-returns-`[]`-not-404
+shape) plus 2 updated category-count assertions (7→8) and a new
+dedicated "REAL and individually captioned" category test in
+`test_data_sources.py`. **120 passing tests total** (up from 113).
+Verified in a sandbox headless browser: the Overview section renders
+all 6 ports with their notes and working citation links, the "not
+comparable... span N different years" copy renders correctly, the Data
+Sources page shows the new category, zero console errors, clean
+`npm run build`.
+
+This closes the last item from the original SIH26006 gap-check (#22 →
+#23 → #24 → #25 → #26). What's left open: the real RBA coking-coal
+ingestion script (#23) still hasn't been run against the live file by
+anyone, and Phase 2 polish / demo readiness are next per the user's own
+sequencing.

@@ -302,6 +302,30 @@ def book_or_wait(
     return result.as_dict()
 
 
+@app.get("/api/v1/port-traffic")
+def list_port_traffic(port_id: str | None = None):
+    """One individually-reported coal-handling record per port (a 24-hour
+    discharge record, a single shipment, a berth record) -- never a
+    monthly series. Every row's `note` states plainly what the figure
+    actually measures; rows span 2016-2026 and are NOT comparable to
+    each other or to a "typical month" for that port. Context only --
+    not used by any ranking or decision logic in this app. See
+    app/db/schema.sql's table comment and DECISIONS.md #26 for why no
+    real monthly series exists through any freely-accessible source for
+    these 6 ports. Optional `?port_id=` filter."""
+    with db_session() as conn:
+        if port_id:
+            rows = conn.execute(
+                "SELECT * FROM port_traffic_history WHERE port_id = ? ORDER BY month",
+                (port_id.upper(),),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM port_traffic_history ORDER BY port_id, month"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+
 @app.get("/api/v1/exchange-rate")
 def exchange_rate():
     """Module 8: the single cited USD->INR rate used to show every USD

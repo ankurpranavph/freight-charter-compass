@@ -75,22 +75,36 @@ reasons, never dropped) plus book-now-vs-wait timing cards for both
 commodities. "By destination port" (the original page) is still there,
 unchanged. 108 passing tests at the time.
 
-**INR secondary currency display, done, awaiting on-machine
-confirmation:** the deliberately-deferred item from DECISIONS.md #20,
-picked by the user as the next thing to build once both named gaps
-closed. New `app/engine/currency.py` (one cited, cross-checked USD->INR
-rate, 94.43 as of 2026-09-04) and `GET /api/v1/exchange-rate`. USD stays
-the source-of-truth currency everywhere; INR shows only as a secondary
-CALCULATED figure alongside it -- Overview's commodity stat cards,
-Forecast's decision card, and both Recommendation modes' cost figures.
-Also added to the Data Sources catalog as its own category. 113 passing
-tests (up from 108). Verified in a sandbox headless browser (including
-forcing a forecast to `status: "ok"` to confirm the INR line renders in
-that branch too); not yet confirmed on the user's own machine. See
+**INR secondary currency display, done, confirmed, committed
+(`14-inr-currency-display`):** the deliberately-deferred item from
+DECISIONS.md #20, picked by the user as the next thing to build once
+both named gaps closed. New `app/engine/currency.py` (one cited,
+cross-checked USD->INR rate, 94.43 as of 2026-09-04) and `GET
+/api/v1/exchange-rate`. USD stays the source-of-truth currency
+everywhere; INR shows only as a secondary CALCULATED figure alongside
+it -- Overview's commodity stat cards, Forecast's decision card, and
+both Recommendation modes' cost figures. Also added to the Data Sources
+catalog as its own category. 113 passing tests at the time. See
 DECISIONS.md #25.
 
-Still open after that: Indian port traffic history, and the real RBA
-coking-coal ingestion, which no one has run for real yet.
+**Indian port traffic history, done, awaiting on-machine confirmation:**
+the last open item. shipmin.gov.in/data.gov.in/IPA are network-blocked
+the same way as thedocs.worldbank.org/rba.gov.au (DECISIONS.md #10),
+and extensive research found no freely-accessible monthly coal-traffic
+series for any of the 6 ports through any source -- surfaced to the
+user directly (three options) rather than fabricated or silently
+skipped; the user chose to seed the real one-off facts targeted
+research could find, clearly labelled. New `note` column on
+`port_traffic_history`, 6 real individually-sourced records (a 24-hour
+discharge record, a single shipment, or a berth record per port,
+spanning 2016-2026, explicitly not comparable to each other). New `GET
+/api/v1/port-traffic?port_id=`, an 8th Data Sources category, and a new
+Overview page section. 120 passing tests (up from 113). Verified in a
+sandbox headless browser; not yet confirmed on the user's own machine.
+See DECISIONS.md #26.
+
+Still open after that: the real RBA coking-coal ingestion, which no one
+has run for real yet -- then Phase 2 polish / demo readiness.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -112,8 +126,13 @@ coking-coal ingestion, which no one has run for real yet.
         deprioritized this block (World Bank alone covers both series we
         need); revisit only if the coking-coal-specific RBA sub-index
         becomes worth the effort later
-  - [ ] Indian port traffic history (shipmin.gov.in monthly PDFs /
-        data.gov.in) into `port_traffic_history` — not started
+  - [x] Indian port traffic history: no freely-accessible monthly
+        series exists for any of the 6 ports (confirmed via both a
+        network block and extensive research) -- 6 real, individually-
+        sourced, individually-captioned one-off records seeded instead
+        (a 24-hour discharge record / single shipment / berth record
+        per port, 2016-2026, explicitly not a series). See
+        DECISIONS.md #26.
 - [x] **Forecast model (Hour 5–9), done:**
       `app/engine/forecast.py` — seasonal-naive baseline + SARIMAX (small
       curated AIC grid search, not exhaustive auto-ARIMA), chronological

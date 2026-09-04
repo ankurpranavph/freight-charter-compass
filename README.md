@@ -23,30 +23,33 @@ coking coal, not thermal — see DECISIONS.md #23) and crude oil — a
 SARIMAX forecast model, a physical vessel/port compatibility gate, a
 voyage cost calculator, a risk-adjusted optimizer that ranks in both
 directions (destination-first, and now vessel-first across all 6 ports
-— DECISIONS.md #24), a book-now-vs-wait recommendation, and a Data
-Sources & Assumptions catalog, covering 6 East Coast ports
-(Visakhapatnam, Paradip, Dhamra, Gangavaram, Krishnapatnam, Haldia) —
-108 passing tests, all wired into the running API. The frontend
-(React + Vite) has all 5 locked MVP pages built — Overview, Forecast
-(SARIMAX chart + decision card), Recommendation (now genuinely
-interactive: pick your own vessel, loading port, cargo size and horizon
-and get a live ranked answer across all 6 destinations, or the original
-destination-first view), and Data Sources & Assumptions (every
-REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app uses, in one place)
-— all live against the real API and verified in a sandbox headless
-browser, fully data-driven so ports 4-6 needed zero frontend changes
-(confirmed by the user, committed as `11-ports-4-6`). The coking-coal
-proxy fix (`12-coking-coal-proxy`) and the cross-port recommendation
-module (`13-cross-port-recommendation`) are both confirmed and
-committed. Every USD figure a user reads a decision off now also shows
-a secondary INR figure (one cited, cross-checked exchange rate — USD
-stays the source-of-truth currency throughout the engine and API) —
-verified in the sandbox and awaiting confirmation on the user's own
+— DECISIONS.md #24), a book-now-vs-wait recommendation, a secondary INR
+currency display alongside every USD figure a user reads a decision off
+(DECISIONS.md #25), 6 real individually-sourced port coal-handling
+records (DECISIONS.md #26), and a Data Sources & Assumptions catalog,
+covering 6 East Coast ports (Visakhapatnam, Paradip, Dhamra,
+Gangavaram, Krishnapatnam, Haldia) — 120 passing tests, all wired into
+the running API. The frontend (React + Vite) has all 5 locked MVP pages
+built — Overview, Forecast (SARIMAX chart + decision card),
+Recommendation (now genuinely interactive: pick your own vessel,
+loading port, cargo size and horizon and get a live ranked answer
+across all 6 destinations, or the original destination-first view),
+and Data Sources & Assumptions (every REAL/CALCULATED/SIMULATED/
+ASSUMPTION figure the app uses, in one place) — all live against the
+real API and verified in a sandbox headless browser, fully data-driven
+so ports 4-6 needed zero frontend changes (confirmed by the user,
+committed as `11-ports-4-6`). The coking-coal proxy fix
+(`12-coking-coal-proxy`), the cross-port recommendation module
+(`13-cross-port-recommendation`), and the INR currency display
+(`14-inr-currency-display`) are all confirmed and committed. The
+Indian port traffic history module (6 real, individually-sourced,
+individually-captioned one-off records — no freely-accessible monthly
+series exists for these ports, see DECISIONS.md #26) is built and
+verified in the sandbox, awaiting confirmation on the user's own
 machine. The real RBA coking-coal ingestion script hasn't been run by
 anyone against the real file yet (so the app honestly shows
-"insufficient data" for coking coal rather than faking a series), and
-Indian port traffic history remains open. See TODO.md for the exact
-punch list.
+"insufficient data" for coking coal rather than faking a series). See
+TODO.md for the exact punch list.
 
 ## Quick start (backend)
 
