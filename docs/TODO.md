@@ -31,14 +31,24 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-Frontend shell (Hour 17-23): scaffold, routing, API client, and all
-three pages (Overview, Forecast, Recommendation) are built and verified
-in a sandbox headless browser. The Forecast page and the Recommendation
-page are both still awaiting the user's own on-machine confirmation
-before their commits land (same test-confirm-commit discipline as every
-other module) -- see DECISIONS.md #20. INR currency display was
-discussed and deliberately deferred to later, after the MVP pages are
-confirmed working -- see DECISIONS.md #20.
+Frontend shell (Hour 17-23) is DONE and committed (09-frontend-mvp-pages):
+scaffold, routing, API client, and all three pages (Overview, Forecast,
+Recommendation) are live against real data, verified in a sandbox
+headless browser, and confirmed by the user on their own machine.
+
+Of the locked 5-page MVP (DECISIONS.md #7: Overview, Freight Forecast,
+Vessel & Port Recommendation, Cost Optimization, Data Sources &
+Assumptions), the Recommendation page's ranked-by-risk-adjusted-cost
+option list already IS the cost-optimization view (Module 6's own
+output) -- so it fulfils both "Vessel & Port Recommendation" and "Cost
+Optimization" in one page rather than splitting the same ranking across
+two. That leaves one page to build to close out the locked 5-page scope:
+**Data Sources & Assumptions**, which needs a small new backend endpoint
+(`/api/v1/data-sources` doesn't exist yet) before the page can be built.
+Flagged to the user, not yet started.
+
+INR currency display was discussed and deliberately deferred to later,
+after the MVP pages are confirmed working -- see DECISIONS.md #20.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
