@@ -494,3 +494,147 @@ what's shown). Forecast and Recommendation pages are routed but
 currently placeholder text — they're the next build step, once charting
 (Forecast, Module 1 + 7) and the interactive port/cargo picker
 (Recommendation, Module 4 + 6) are built out.
+
+## 19. Forecast page: hand-rolled SVG chart, following the dataviz method deliberately, not by eye
+
+**Decision:** the Forecast page's price chart (`frontend/src/components/ForecastChart.jsx`)
+is a hand-rolled SVG line chart, not a charting library — same lean-tooling
+reasoning as #18 (one chart, one page; a library's install size and
+default-look override cost more here than they save). Rather than eyeball
+the result, it was built by explicitly following the project's dataviz
+skill: form first (trend-over-time, two-series categorical), then color
+(the skill's own validated default palette, slots 1/2 — blue/orange,
+already proven to clear every CVD and contrast gate, used unmodified —
+see the palette-sourcing note in the component), then marks (2px lines,
+10%-opacity area for the confidence band, hairline gridlines, >=8px end
+markers), then interaction (crosshair + one tooltip, per-point on hover),
+then a mandatory legend for the two series plus a third swatch for the
+CI band.
+
+**What real testing caught before this reached the user's machine:** the
+first sandbox render had two genuine layout bugs, not just polish
+issues. (1) Y-axis "nice" tick values were computed from the raw
+data range independently of the padded plotting domain, so a tick
+could land outside `[MARGIN.top, HEIGHT-MARGIN.bottom]` — with
+`overflow: visible` (needed so labels aren't clipped), that tick's text
+rendered above the chart, overlapping the legend. Fixed by computing
+nice ticks FIRST and then widening the plotted y-domain to match them,
+never the reverse — a standard chart-library behavior that a hand-rolled
+chart has to implement deliberately. (2) X-axis date labels were picked
+by a fixed index-modulo step, which put the actual/forecast boundary
+label and the final forecast-endpoint label within a few pixels of each
+other whenever the forecast horizon was short relative to the full
+history (their text collided). Fixed by selecting labels by actual
+rendered pixel spacing (greedy nearest-fit with a minimum gap) instead
+of index arithmetic, and by dropping the boundary's own text label
+entirely — the vertical dashed guide plus the "Forecast →" annotation
+already marks the split, so a third label there was redundant clutter
+as well as a collision risk. Both were caught by rendering real output
+(a headless browser against a running backend with a realistic ~70-month
+series) and looking at the screenshot, not by reading the code — exactly
+the "render it and look at it" step the dataviz method itself calls for
+as the final check.
+
+**Sandbox-only synthetic data for this verification, never shipped:** the
+cloud sandbox only has the 6-row starter snapshot (same situation as
+every other module's testing — see DECISIONS.md #17), which is far too
+short to exercise SARIMAX or produce a meaningful chart. A ~70-month
+synthetic trending series was generated purely to drive the chart
+through its real code path during testing (multi-year x-axis, a visible
+seasonal pattern, a widening confidence band at longer horizons) and was
+deleted from the sandbox afterward — it never touched the user's machine
+or this repository. On the user's real machine, with the real 1480-row
+World Bank history already loaded, the chart renders the actual
+coal/oil series.
+
+**The book-now-vs-wait decision badge deliberately does NOT use the
+dataviz skill's status palette** (good/warning/serious/critical).
+BOOK_NOW/WAIT/HOLD are recommended actions, not health or error states —
+using status-red for "wait" would read as "something is wrong," which
+isn't the claim being made. The badges instead reuse the app's own accent
+teal (BOOK_NOW) and a neutral amber/gray pair (WAIT/HOLD) that carry no
+implied severity, consistent with the status palette's own collision
+rule: "when a series means good/bad it wears status tokens; when it's
+just an action, it doesn't."
+
+**Environment note, not a code issue:** getting `npm install` working
+cleanly on the user's machine (via the device bridge) required a real
+detour this round — an earlier interrupted install had left one
+platform-mismatched optional dependency (`@rolldown/binding-win32-x64-msvc`,
+Vite's Windows-specific native binding) in a Linux-side `node_modules`,
+and one specific `.node` binary inside it refused to delete
+(`Input/output error`, most likely a Windows-side file lock — antivirus
+scanning a freshly-written binary is the common cause). Worked around by
+leaving that one orphaned file in place (it's not on any resolvable
+package path, so npm ignores it) and reinstalling everything else
+cleanly around it. `npm run build` now succeeds on the user's machine
+with the correct Linux binding present. This is a one-time repair, not a
+recurring risk — the reinstall wrote a clean, consistent `node_modules`.
+
+## 20. Recommendation page composes Module 6 directly; INR display deliberately deferred; a correction on the `node_modules` note above
+
+**Recommendation page** is the last of the 3 MVP frontend pages. It's
+deliberately thin: a port picker (3 seeded ports) and an optional
+cargo-tonnes number input drive `GET /api/v1/optimize/{port_id}` as-is —
+no new backend logic, no second ranking. Every returned option is
+already physically compatible (Module 4's hard gate ran inside the
+optimizer), so the page never shows a fail state for an individual
+option; the only empty state is *zero* compatible options for the
+current port + cargo combination, which does happen (e.g. an
+unrealistically large fixed cargo tonnage against every vessel's DWT)
+and is shown as an explanatory message, not a blank list. Each ranked
+card shows the risk-adjusted cost headline plus the plain base cost and
+the risk premium in one line, with the exact draft/LOA/beam margins
+behind that risk score available in a `<details>` expander — the same
+"never claim a number without the reasoning behind it one click away"
+pattern as the Forecast page's decision card. Verified with a headless
+browser across all 3 ports and a few cargo sizes: switching ports
+re-ranks correctly, a small fixed cargo (5,000t) correctly re-ranks
+toward smaller vessels (fixed charter-hire cost spread over far fewer
+tonnes makes large vessels' cost-per-tonne spike), and the compatibility
+expander renders the right numbers — zero console errors throughout.
+
+**Both the Forecast page and this Recommendation page are still awaiting
+the user's own on-machine confirmation** before their commits
+(`09-forecast-page`, `10-recommendation-page`) land — same
+test-confirm-commit discipline as every backend module this whole
+project. Sandbox/headless-browser verification is necessary but not
+sufficient; only the user's own browser, against their own running
+backend, is what gates a commit.
+
+**INR currency display, deliberately deferred, not forgotten:** the user
+asked whether USD or INR is the right choice for an SIH (Ministry of
+Steel) submission. Decision: keep USD as the sole primary/source-of-truth
+currency everywhere in the engine and API — World Bank Pink Sheet
+prices, Ship & Bunker VLSFO bunker price, and HandyBulk time-charter
+rates are all genuinely USD-denominated in the real world (that's how
+international dry-bulk shipping and commodity trade are actually priced),
+so USD-primary is what keeps the REAL/CALCULATED labelling honest. When
+built, INR will be added as a secondary, clearly-labelled CALCULATED
+conversion using one cited, dated exchange rate (e.g. an RBI reference
+rate for a specific date) shown alongside the USD figure — never a
+silent wholesale switch of the underlying numbers to INR, which would
+inject an unsourced, undated exchange-rate assumption into figures that
+are currently clean REAL data. The user explicitly asked for this to be
+built at the end, after the 3-page MVP is confirmed working, not now.
+
+**Correction to the environment note under #19:** that note called the
+`node_modules` platform-mismatch a "one-time repair, not a recurring
+risk." It recurred on the very next build check. Root cause understood
+now: this device bridge's Linux VM and the user's actual Windows
+terminal share the same on-disk `node_modules` folder (it's the same
+real files on the user's machine), but each writes platform-specific
+native binaries into it (`@rolldown/binding-linux-x64-gnu` from an
+`npm install` run through this bridge vs. `@rolldown/binding-win32-x64-msvc`
+from an `npm install` run directly in the user's own terminal, which is
+exactly what the user was told to do to run the app for real). Whichever
+one installs *last* wins, so this bridge's own `npm run build` /
+`npm run lint` sanity checks will keep flipping between working and
+"Cannot find module" depending on which side last touched
+`node_modules` — that's expected, not a regression, and it doesn't
+affect the user: their own `npm install` / `npm run dev` on their actual
+Windows machine always gets the correct Windows bindings for their own
+use. This bridge's build check is a convenience for catching real code
+bugs before pushing, not the source of truth for whether the app runs;
+the user's own browser against their own `npm run dev` is that source of
+truth, same as it's been since DECISIONS.md #18.

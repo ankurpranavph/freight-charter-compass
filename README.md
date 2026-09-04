@@ -20,10 +20,12 @@ Backend is functionally complete for the MVP's decision-engine: real
 ingested commodity price history, a SARIMAX forecast model, a physical
 vessel/port compatibility gate, a voyage cost calculator, a risk-adjusted
 optimizer, and a book-now-vs-wait recommendation — 72 passing tests, all
-wired into the running API. The frontend shell (React + Vite) has started:
-routing and the Overview page are live against the real API; the Forecast
-and Recommendation pages are still placeholders. See TODO.md for the exact
-punch list.
+wired into the running API. The frontend (React + Vite) now has all 3 MVP
+pages built — Overview, Forecast (SARIMAX chart + decision card), and
+Recommendation (ranked vessel/route options) — all live against the real
+API and verified in a sandbox headless browser. The Forecast and
+Recommendation pages are still awaiting confirmation on the user's own
+machine before their commits land. See TODO.md for the exact punch list.
 
 ## Quick start (backend)
 

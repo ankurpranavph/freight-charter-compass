@@ -31,9 +31,14 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-Frontend shell (Hour 17-23) is in progress: scaffold, routing, API
-client, and the Overview page are done and verified; Forecast and
-Recommendation pages are routed placeholders, next up.
+Frontend shell (Hour 17-23): scaffold, routing, API client, and all
+three pages (Overview, Forecast, Recommendation) are built and verified
+in a sandbox headless browser. The Forecast page and the Recommendation
+page are both still awaiting the user's own on-machine confirmation
+before their commits land (same test-confirm-commit discipline as every
+other module) -- see DECISIONS.md #20. INR currency display was
+discussed and deliberately deferred to later, after the MVP pages are
+confirmed working -- see DECISIONS.md #20.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -120,7 +125,7 @@ Recommendation pages are routed placeholders, next up.
       3 against real seeded data — asserting shape/contract, not a pinned
       verdict, since the actual decision legitimately depends on the
       latest real price whenever the test runs). 72 total now.
-- [ ] **Frontend shell (Hour 17-23), in progress:** React+Vite scaffold
+- [x] **Frontend shell (Hour 17-23), done (pending user confirmation on the last two pages):** React+Vite scaffold
       (plain JavaScript, not TypeScript — see DECISIONS.md #18),
       `react-router-dom` 3-page shell with a shared Layout/nav
       (`frontend/src/components/Layout.jsx`) and a hand-written fetch
@@ -135,13 +140,31 @@ Recommendation pages are routed placeholders, next up.
       - [x] Backend: added a CORS policy scoped to the Vite dev server's
             two localhost origins (`localhost:5173` / `127.0.0.1:5173`,
             GET only) — see DECISIONS.md #18.
-      - [ ] Forecast page: chart the SARIMAX vs. seasonal-naive forecast
-            (Module 1) plus the book-now-vs-wait verdict (Module 7).
-            Currently a routed placeholder.
-      - [ ] Recommendation page: port + cargo picker driving the
-            optimizer ranking (Module 6) with compatibility reasoning
-            (Module 4) visible per option. Currently a routed
-            placeholder.
+      - [x] Forecast page, done: hand-rolled SVG line chart
+            (`frontend/src/components/ForecastChart.jsx`) — actual price
+            vs. SARIMAX forecast with a shaded 95% CI band, crosshair +
+            tooltip, commodity and horizon pickers, a book-now-vs-wait
+            decision card (Module 7), and a model-accuracy table (SARIMAX
+            vs. seasonal-naive baseline). Built by following the dataviz
+            skill's method (form -> color -> marks -> interaction ->
+            legend), not by eye — caught and fixed two real layout bugs
+            (y-axis ticks escaping the plot bounds, x-axis label
+            collision near the forecast boundary) via a headless-browser
+            render before this ever reached the user's machine. See
+            DECISIONS.md #19.
+      - [x] Recommendation page, done: a port picker (3 seeded ports)
+            and an optional cargo-tonnes input drive
+            `GET /api/v1/optimize/{port_id}`, rendered as ranked option
+            cards (vessel x loading-port) showing risk-adjusted cost per
+            tonne, the base cost, and a plain-language risk-premium
+            readout. Each card's "Why this vessel clears the port"
+            expander shows the exact Module 4 draft/LOA/beam margins
+            behind the risk score, not just the pass/fail. Verified with
+            a headless browser: port switching, cargo-tonnes filtering
+            (confirmed it correctly re-ranks -- fixed charter-hire cost
+            spread over fewer tonnes changes the winner at low cargo
+            sizes), and the compatibility-detail expander, all with zero
+            console errors.
 - [ ] **Frontend, rest of MVP (Hour 23–27):** Cost Optimization page, Data
       Sources & Assumptions page generated from `/api/v1/data-sources`.
 - [ ] **Checkpoint (Hour 27–29):** if on schedule, add ports 4–6

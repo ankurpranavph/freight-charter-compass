@@ -74,8 +74,9 @@ arithmetic at request time (no live external calls during a demo).
   Forecast / Recommendation), and a hand-written fetch client
   (`frontend/src/api/client.js`) — no generated API client. CORS on the
   backend is scoped to the Vite dev server's two localhost origins only.
-- Charts: not yet built (planned for the Forecast page, next step).
-  Map: not planned for the MVP (not in the locked 5-page scope).
+- Charts: hand-rolled SVG (no library — see DECISIONS.md #18, #19),
+  built via the dataviz skill's method. Map: not planned for the MVP
+  (not in the locked 5-page scope).
 - Database: SQLite file (`backend/freight.db`, gitignored, rebuilt from seed
   JSON on every app startup).
 - ML: statsmodels (SARIMAX) + numpy for hand-rolled MAE/RMSE/MAPE — no
@@ -258,20 +259,30 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
   optimizer-engine + 12 book-or-wait).
 
-- **Frontend shell started (Hour 17-23, in progress):** React + Vite,
+- **Frontend shell built, all 3 MVP pages (Hour 17-23):** React + Vite,
   plain JavaScript (DECISIONS.md #18), `react-router-dom` 3-page shell.
-  The Overview page is fully wired to live data — fleet, ports, origin
-  ports, latest commodity prices, and a data-honesty panel — verified
-  end-to-end in a sandbox (headless browser, zero console errors) before
-  reaching the user's machine. Forecast and Recommendation pages are
-  routed but still placeholder text, pending charting and the
-  port/cargo picker UI. Backend gained a scoped CORS policy
-  (`localhost:5173` only) to allow this.
+  Overview is fully wired to live data — fleet, ports, origin ports,
+  latest commodity prices, and a data-honesty panel. Forecast: a
+  hand-rolled SVG chart (actual vs. SARIMAX forecast, 95% CI band,
+  crosshair/tooltip), commodity + horizon pickers, the book-now-vs-wait
+  decision card (Module 7), and a model-accuracy table — built by
+  explicitly following the dataviz skill's method rather than eyeballing
+  it, catching and fixing two real layout bugs via a headless-browser
+  render before reaching the user's machine (DECISIONS.md #19).
+  Recommendation: a port + cargo-tonnes picker driving Module 6's
+  optimizer directly (`GET /api/v1/optimize/{port_id}`), rendered as
+  ranked option cards with the Module 4 compatibility margins behind
+  each risk premium one click away (DECISIONS.md #20). Backend gained a
+  scoped CORS policy (`localhost:5173` only) to allow all of this. The
+  Forecast and Recommendation pages are both verified in a sandbox
+  headless browser but still awaiting the user's own on-machine
+  confirmation before their commits land (DECISIONS.md #20).
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
-covers the two series we need), Indian port traffic history, and the
-Forecast/Recommendation page content — see TODO.md for the exact next
-step.
+covers the two series we need), Indian port traffic history, and an
+INR secondary currency display (deliberately deferred to after the MVP
+pages are confirmed — DECISIONS.md #20) — see TODO.md for exact next
+steps.
 
 ## Important assumptions
 

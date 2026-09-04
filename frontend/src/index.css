@@ -13,6 +13,17 @@
   --mono: ui-monospace, "SF Mono", Consolas, monospace;
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
+
+  /* Chart palette — dataviz skill's validated default, categorical
+     slots 1 (blue) and 2 (orange): adjacent-pair CVD Delta E 9.1 light
+     (>= 8 target), normal-vision Delta E 19.6 light (>= 15 floor). Used
+     unmodified from references/palette.md — see DECISIONS.md. */
+  --series-actual: #2a78d6;
+  --series-forecast: #eb6834;
+  --series-forecast-band: rgba(235, 104, 52, 0.1);
+  --chart-grid: #e1e0d9;
+  --chart-tick: #898781;
+  --chart-boundary: #c3c2b7;
 }
 
 * {
@@ -246,4 +257,407 @@ tbody tr:last-child td {
 .honesty-list dd {
   margin: 0;
   color: var(--text);
+}
+
+/* ---------------------------------------------------------------------
+   Filters (commodity / horizon pickers) — Forecast page
+   ------------------------------------------------------------------- */
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  gap: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.filter-btn {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--sans);
+}
+
+.filter-btn:hover {
+  background: var(--accent-bg);
+  color: var(--text);
+}
+
+.filter-btn-active,
+.filter-btn-active:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.error-box-info {
+  background: var(--accent-bg);
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------------
+   Forecast chart
+   ------------------------------------------------------------------- */
+
+.chart-root {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem 0.75rem;
+  position: relative;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.legend-line {
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-dashed {
+  background: transparent !important;
+  border-top: 3px dashed;
+  height: 0;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+}
+
+.chart-gridline {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: var(--chart-tick);
+  font-size: 11px;
+  font-family: var(--sans);
+}
+
+.chart-tick-y {
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+
+.chart-boundary {
+  stroke: var(--chart-boundary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-boundary-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--sans);
+}
+
+.chart-ci-band {
+  fill: var(--series-forecast-band);
+  stroke: none;
+}
+
+.chart-line-actual {
+  fill: none;
+  stroke: var(--series-actual);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-line-forecast {
+  fill: none;
+  stroke: var(--series-forecast);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 5 4;
+}
+
+.chart-marker {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.chart-marker-actual {
+  fill: var(--series-actual);
+}
+
+.chart-marker-forecast {
+  fill: var(--series-forecast);
+}
+
+.chart-crosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -120%);
+  background: var(--text);
+  color: #fff;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.chart-tooltip-date {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.2rem;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chart-tooltip-key {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.chart-tooltip-value {
+  font-weight: 700;
+}
+
+.chart-tooltip-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.chart-tooltip-ci {
+  margin-top: 0.2rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+}
+
+/* ---------------------------------------------------------------------
+   Book-now-vs-wait decision card
+   ------------------------------------------------------------------- */
+
+.decision-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+}
+
+.decision-card h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.decision-card-muted {
+  color: var(--text-muted);
+}
+
+.decision-verdict {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.decision-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.decision-badge-BOOK_NOW {
+  background: var(--accent);
+  color: #fff;
+}
+
+.decision-badge-WAIT {
+  background: #eda100;
+  color: #2a2200;
+}
+
+.decision-badge-HOLD {
+  background: var(--border);
+  color: var(--text);
+}
+
+.decision-confidence {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.decision-reasoning {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  max-width: 75ch;
+}
+
+/* ---------------------------------------------------------------------
+   Recommendation page — cargo input + ranked option cards
+   ------------------------------------------------------------------- */
+
+.cargo-input-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cargo-input {
+  width: 8rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.option-card {
+  display: flex;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.option-rank {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.option-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.option-from {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.option-cost {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.option-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.option-risk-flag {
+  color: #a15b00;
+  font-weight: 600;
+}
+
+.option-risk-ok {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.option-details {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.option-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.option-details summary:hover {
+  color: var(--text);
+}
+
+.option-checks {
+  margin: 0.5rem 0 0.4rem;
+  padding-left: 1.2rem;
+  color: var(--text);
+}
+
+.option-checks li {
+  margin-bottom: 0.15rem;
 }
