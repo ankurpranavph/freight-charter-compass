@@ -11,7 +11,7 @@ def test_build_data_sources_shape():
         payload = build_data_sources(conn)
 
     assert "categories" in payload
-    assert len(payload["categories"]) == 6
+    assert len(payload["categories"]) == 7
     for cat in payload["categories"]:
         assert cat["category"]
         assert isinstance(cat["entries"], list)
@@ -93,6 +93,20 @@ def test_voyage_cost_inputs_cite_the_same_constants_voyage_engine_uses():
     assert TIME_CHARTER_SOURCE in sources
     for entry in cat["entries"]:
         assert entry["classification"] == "ASSUMPTION"
+
+
+def test_currency_entry_cites_the_same_rate_the_endpoint_uses():
+    from app.engine.currency import USD_TO_INR_RATE, USD_TO_INR_SOURCE
+
+    with db_session() as conn:
+        payload = build_data_sources(conn)
+
+    cat = next(c for c in payload["categories"] if c["category"] == "Currency conversion")
+    assert len(cat["entries"]) == 1
+    entry = cat["entries"][0]
+    assert entry["classification"] == "CALCULATED"
+    assert entry["source"] == USD_TO_INR_SOURCE
+    assert str(USD_TO_INR_RATE) in entry["detail"] or f"{USD_TO_INR_RATE:.2f}" in entry["detail"]
 
 
 def test_methodology_entries_are_calculated_with_no_external_source():

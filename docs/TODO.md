@@ -62,23 +62,35 @@ app degrades honestly (insufficient_data, correct script name) rather
 than showing nothing. 98 passing tests at the time.
 
 **Cross-port recommendation + interactive Recommendation page, done,
-awaiting on-machine confirmation:** the second named gap -- closed after
-the user also asked, separately, for the app to be more interactive.
-New `rank_ports_for_vessel` in `app/engine/optimizer.py` (mirrors
-`rank_options`: fixed vessel + loading port, ranks the 6 destinations)
-and `GET /api/v1/optimize/by-vessel`. The Recommendation page gained a
-mode toggle -- "by vessel & loading port" (new default): pick a vessel
-class, loading port, optional custom cargo tonnage, and a forecast
-horizon, and get back live ranked destinations (incompatible ones shown
-too, with reasons, never dropped) plus book-now-vs-wait timing cards for
-both commodities. "By destination port" (the original page) is still
-there, unchanged. 108 passing tests (up from 98). Verified in a sandbox
-headless browser; not yet confirmed on the user's own machine. See
-DECISIONS.md #24.
+confirmed, committed (`13-cross-port-recommendation`):** the second
+named gap -- closed after the user also asked, separately, for the app
+to be more interactive. New `rank_ports_for_vessel` in
+`app/engine/optimizer.py` (mirrors `rank_options`: fixed vessel +
+loading port, ranks the 6 destinations) and `GET
+/api/v1/optimize/by-vessel`. The Recommendation page gained a mode
+toggle -- "by vessel & loading port" (new default): pick a vessel class,
+loading port, optional custom cargo tonnage, and a forecast horizon, and
+get back live ranked destinations (incompatible ones shown too, with
+reasons, never dropped) plus book-now-vs-wait timing cards for both
+commodities. "By destination port" (the original page) is still there,
+unchanged. 108 passing tests at the time.
 
-Still open after that: the deliberately-deferred INR secondary currency
-display (DECISIONS.md #20), Indian port traffic history, and the real
-RBA coking-coal ingestion, which no one has run for real yet.
+**INR secondary currency display, done, awaiting on-machine
+confirmation:** the deliberately-deferred item from DECISIONS.md #20,
+picked by the user as the next thing to build once both named gaps
+closed. New `app/engine/currency.py` (one cited, cross-checked USD->INR
+rate, 94.43 as of 2026-09-04) and `GET /api/v1/exchange-rate`. USD stays
+the source-of-truth currency everywhere; INR shows only as a secondary
+CALCULATED figure alongside it -- Overview's commodity stat cards,
+Forecast's decision card, and both Recommendation modes' cost figures.
+Also added to the Data Sources catalog as its own category. 113 passing
+tests (up from 108). Verified in a sandbox headless browser (including
+forcing a forecast to `status: "ok"` to confirm the INR line renders in
+that branch too); not yet confirmed on the user's own machine. See
+DECISIONS.md #25.
+
+Still open after that: Indian port traffic history, and the real RBA
+coking-coal ingestion, which no one has run for real yet.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 

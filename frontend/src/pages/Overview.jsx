@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useExchangeRate } from "../hooks/useExchangeRate";
+import { formatInr } from "../utils/currency";
 
 function useOverviewData() {
   const [state, setState] = useState({
@@ -52,6 +54,7 @@ function latestPrice(rows) {
 
 export default function Overview() {
   const { loading, error, data } = useOverviewData();
+  const fx = useExchangeRate();
 
   if (loading) {
     return <p className="status-text">Loading live data from the API…</p>;
@@ -111,7 +114,10 @@ export default function Overview() {
           <p className="section-note">
             REAL — coal/oil from the World Bank Pink Sheet (monthly), coking
             coal from a single cited spot snapshot pending its own full RBA
-            ingestion run. See <code>docs/DECISIONS.md #12, #23</code>.
+            ingestion run. USD is the source-of-truth figure throughout this
+            app; INR below is a secondary CALCULATED conversion at one cited
+            rate, shown alongside it, never in place of it. See{" "}
+            <code>docs/DECISIONS.md #12, #23, #25</code>.
           </p>
           <div className="stat-row">
             {latestCokingCoal && (
@@ -119,6 +125,9 @@ export default function Overview() {
                 <span className="stat-value">
                   ${latestCokingCoal.price_usd.toFixed(2)}
                 </span>
+                {formatInr(latestCokingCoal.price_usd, fx) && (
+                  <span className="stat-sub">≈ {formatInr(latestCokingCoal.price_usd, fx)}</span>
+                )}
                 <span className="stat-label">
                   Coking coal (Australian), {latestCokingCoal.date}
                 </span>
@@ -129,6 +138,9 @@ export default function Overview() {
                 <span className="stat-value">
                   ${latestCoal.price_usd.toFixed(2)}
                 </span>
+                {formatInr(latestCoal.price_usd, fx) && (
+                  <span className="stat-sub">≈ {formatInr(latestCoal.price_usd, fx)}</span>
+                )}
                 <span className="stat-label">
                   Coal (Australian, thermal), {latestCoal.date}
                 </span>
@@ -139,6 +151,9 @@ export default function Overview() {
                 <span className="stat-value">
                   ${latestOil.price_usd.toFixed(2)}
                 </span>
+                {formatInr(latestOil.price_usd, fx) && (
+                  <span className="stat-sub">≈ {formatInr(latestOil.price_usd, fx)}</span>
+                )}
                 <span className="stat-label">
                   Crude oil (Brent), {latestOil.date}
                 </span>

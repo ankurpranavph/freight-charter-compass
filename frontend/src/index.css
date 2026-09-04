@@ -171,6 +171,11 @@ code {
   color: var(--text-muted);
 }
 
+.stat-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .section {
   margin-top: 2rem;
 }
@@ -611,11 +616,23 @@ tbody tr:last-child td {
   font-size: 0.88rem;
 }
 
+.option-cost-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+
 .option-cost {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--accent);
   white-space: nowrap;
+}
+
+.option-cost-inr {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 .option-meta {

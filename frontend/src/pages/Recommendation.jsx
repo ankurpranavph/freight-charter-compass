@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useExchangeRate } from "../hooks/useExchangeRate";
+import { formatInr } from "../utils/currency";
 
 const HORIZONS = [3, 6, 12, 24];
 
@@ -55,10 +57,11 @@ function useByPortData(portId, cargoTonnes) {
   return state;
 }
 
-function VesselOriginOptionCard({ option, originName }) {
+function VesselOriginOptionCard({ option, originName, fx }) {
   const { voyage, compatibility } = option;
   const marginPct = option.tightest_margin_ratio_pct;
   const hasPenalty = option.risk_multiplier > 1;
+  const inr = formatInr(option.risk_adjusted_cost_per_tonne_usd, fx);
 
   return (
     <div className="option-card">
@@ -69,9 +72,12 @@ function VesselOriginOptionCard({ option, originName }) {
             {option.vessel_type}
             <span className="option-from"> from {originName}</span>
           </h3>
-          <span className="option-cost">
-            ${option.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t
-          </span>
+          <div className="option-cost-wrap">
+            <span className="option-cost">
+              ${option.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t
+            </span>
+            {inr && <span className="option-cost-inr">≈ {inr}/t</span>}
+          </div>
         </div>
 
         <div className="option-meta">
@@ -116,7 +122,7 @@ function VesselOriginOptionCard({ option, originName }) {
   );
 }
 
-function ByPortPanel({ ports, originPorts }) {
+function ByPortPanel({ ports, originPorts, fx }) {
   const [portId, setPortId] = useState(ports.length ? ports[0].port_id : null);
   const [cargoInput, setCargoInput] = useState("");
   const cargoTonnes = cargoInput && Number(cargoInput) > 0 ? Number(cargoInput) : null;
@@ -188,6 +194,7 @@ function ByPortPanel({ ports, originPorts }) {
               key={`${opt.vessel_type}-${opt.origin_id}`}
               option={opt}
               originName={originName(opt.origin_id)}
+              fx={fx}
             />
           ))}
         </div>
@@ -299,10 +306,11 @@ function TimingCard({ label, result, loading }) {
   );
 }
 
-function PortOptionCard({ option, rank, portName }) {
+function PortOptionCard({ option, rank, portName, fx }) {
   const { voyage, compatibility } = option;
   const marginPct = option.tightest_margin_ratio_pct;
   const hasPenalty = option.risk_multiplier > 1;
+  const inr = formatInr(option.risk_adjusted_cost_per_tonne_usd, fx);
 
   return (
     <div className="option-card">
@@ -310,9 +318,12 @@ function PortOptionCard({ option, rank, portName }) {
       <div className="option-body">
         <div className="option-head">
           <h3>{portName}</h3>
-          <span className="option-cost">
-            ${option.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t
-          </span>
+          <div className="option-cost-wrap">
+            <span className="option-cost">
+              ${option.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t
+            </span>
+            {inr && <span className="option-cost-inr">≈ {inr}/t</span>}
+          </div>
         </div>
 
         <div className="option-meta">
@@ -371,7 +382,7 @@ function IncompatiblePortRow({ entry, portName }) {
   );
 }
 
-function ByVesselPanel({ vessels, originPorts, ports }) {
+function ByVesselPanel({ vessels, originPorts, ports, fx }) {
   const [vesselType, setVesselType] = useState(vessels.length ? vessels[0].vessel_type : null);
   const [originId, setOriginId] = useState(originPorts.length ? originPorts[0].origin_id : null);
   const [cargoInput, setCargoInput] = useState("");
@@ -504,6 +515,7 @@ function ByVesselPanel({ vessels, originPorts, ports }) {
                   option={opt}
                   rank={opt.rank}
                   portName={portName(opt.port_id)}
+                  fx={fx}
                 />
               ))}
             </div>
@@ -536,6 +548,7 @@ function ByVesselPanel({ vessels, originPorts, ports }) {
 export default function Recommendation() {
   const [mode, setMode] = useState("by-vessel");
   const [ref, setRef] = useState({ ports: null, originPorts: null, vessels: null, error: null });
+  const fx = useExchangeRate();
 
   useEffect(() => {
     let cancelled = false;
@@ -587,11 +600,16 @@ export default function Recommendation() {
       )}
 
       {ref.ports && ref.originPorts && ref.vessels && mode === "by-vessel" && (
-        <ByVesselPanel vessels={ref.vessels} originPorts={ref.originPorts} ports={ref.ports} />
+        <ByVesselPanel
+          vessels={ref.vessels}
+          originPorts={ref.originPorts}
+          ports={ref.ports}
+          fx={fx}
+        />
       )}
 
       {ref.ports && ref.originPorts && ref.vessels && mode === "by-port" && (
-        <ByPortPanel ports={ref.ports} originPorts={ref.originPorts} />
+        <ByPortPanel ports={ref.ports} originPorts={ref.originPorts} fx={fx} />
       )}
     </div>
   );

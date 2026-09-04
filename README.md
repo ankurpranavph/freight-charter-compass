@@ -36,14 +36,17 @@ REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app uses, in one place)
 — all live against the real API and verified in a sandbox headless
 browser, fully data-driven so ports 4-6 needed zero frontend changes
 (confirmed by the user, committed as `11-ports-4-6`). The coking-coal
-proxy fix is confirmed and committed (`12-coking-coal-proxy`); its own
-real-history ingestion script (RBA Index of Commodity Prices) is
-written but not yet run by anyone against the real file, so the app
-currently forecasts coking coal as "insufficient data" honestly rather
-than faking a series. The cross-port recommendation module is verified
-in the sandbox and awaiting confirmation on the user's own machine. An
-INR secondary currency display and Indian port traffic history remain
-open. See TODO.md for the exact punch list.
+proxy fix (`12-coking-coal-proxy`) and the cross-port recommendation
+module (`13-cross-port-recommendation`) are both confirmed and
+committed. Every USD figure a user reads a decision off now also shows
+a secondary INR figure (one cited, cross-checked exchange rate — USD
+stays the source-of-truth currency throughout the engine and API) —
+verified in the sandbox and awaiting confirmation on the user's own
+machine. The real RBA coking-coal ingestion script hasn't been run by
+anyone against the real file yet (so the app honestly shows
+"insufficient data" for coking coal rather than faking a series), and
+Indian port traffic history remains open. See TODO.md for the exact
+punch list.
 
 ## Quick start (backend)
 

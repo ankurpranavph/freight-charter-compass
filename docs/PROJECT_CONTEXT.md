@@ -144,9 +144,13 @@ not created speculatively upfront.
   the forecast's 95% CI still contains today's real price (see
   DECISIONS.md #17). 404 for an unknown/empty commodity;
   `status: "insufficient_data"` if there isn't enough history loaded yet.
+- `GET /api/v1/exchange-rate` — Module 8: the one cited, cross-checked
+  USD->INR rate the frontend uses to show a secondary INR figure
+  alongside every USD one it does. USD stays the source-of-truth
+  currency everywhere else in the engine and API (DECISIONS.md #25).
 - `GET /api/v1/data-sources` — the Data Sources & Assumptions page's own
   catalog: every REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app
-  uses, in 6 categories, read live from the same seeded rows and cited
+  uses, in 7 categories, read live from the same seeded rows and cited
   constants the rest of the API already uses rather than a separate
   hand-maintained list (DECISIONS.md #21).
 
@@ -386,11 +390,26 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   port-first direction's own result for those same three ports; 10 new
   tests — **108 passing tests total.** See DECISIONS.md #24.
 
+- **INR secondary currency display:** the item deliberately deferred at
+  #20, picked by the user as the next thing to build once both named
+  problem-statement gaps were closed. New `app/engine/currency.py` with
+  one cited, cross-checked USD→INR rate (94.43 as of 2026-09-04,
+  cross-checked between Trading Economics' spot quote and SBI's same-day
+  forex card rate) and `GET /api/v1/exchange-rate`. USD stays the sole
+  source-of-truth currency throughout the engine and API — this is
+  purely a secondary, clearly-labelled CALCULATED display figure, never
+  used in any ranking or decision logic. Wired into every headline USD
+  figure a user reads a decision off: Overview's three commodity stat
+  cards, Forecast's decision card (deliberately not the chart itself —
+  a second currency axis would be a dual-axis chart, the dataviz skill's
+  #1 anti-pattern), and both Recommendation modes' ranked cost figures.
+  Also its own new category on the Data Sources page. 5 new tests plus 2
+  updated — **113 passing tests total.** See DECISIONS.md #25.
+
 **Not yet built:** the real RBA coking-coal ingestion has not been run
 for real by anyone yet (script exists, layout unverified — see
-DECISIONS.md #23); Indian port traffic history; and an INR secondary
-currency display (deliberately deferred — DECISIONS.md #20) — see
-TODO.md for exact next steps.
+DECISIONS.md #23); and Indian port traffic history — see TODO.md for
+exact next steps.
 
 ## Important assumptions
 

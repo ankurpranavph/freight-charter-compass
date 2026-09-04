@@ -86,6 +86,7 @@ export const api = {
   bookOrWait: (commodity, horizon) =>
     request(`/api/v1/decision/book-vs-wait/${commodity}`, { horizon }),
   dataSources: () => request("/api/v1/data-sources"),
+  exchangeRate: () => request("/api/v1/exchange-rate"),
 };
 
 export { ApiError };

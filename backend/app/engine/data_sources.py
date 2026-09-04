@@ -19,6 +19,11 @@ are arithmetic or a statistical model over the REAL/ASSUMPTION data
 above, not a fact pulled from anywhere — so those five are static
 methodology notes, not database-derived.
 """
+from app.engine.currency import (
+    USD_TO_INR_RATE,
+    USD_TO_INR_SOURCE,
+    USD_TO_INR_SOURCE_URL,
+)
 from app.engine.voyage import (
     BUNKER_PRICE_SOURCE,
     BUNKER_PRICE_SOURCE_URL,
@@ -177,6 +182,24 @@ def _voyage_cost_entries() -> list:
     ]
 
 
+def _currency_entries() -> list:
+    return [
+        _entry(
+            "USD -> INR display rate",
+            "CALCULATED",
+            detail=(
+                f"1 USD = ₹{USD_TO_INR_RATE:.2f} — a single cited spot rate, "
+                "not a live feed. USD stays the source-of-truth currency "
+                "everywhere in this app; INR is shown only as a secondary "
+                "figure alongside it, never in place of it. See "
+                "DECISIONS.md #25."
+            ),
+            source=USD_TO_INR_SOURCE,
+            source_url=USD_TO_INR_SOURCE_URL,
+        ),
+    ]
+
+
 def _methodology_entries() -> list:
     return [
         _entry(
@@ -259,6 +282,10 @@ def build_data_sources(conn) -> dict:
             {
                 "category": "Voyage cost inputs",
                 "entries": _voyage_cost_entries(),
+            },
+            {
+                "category": "Currency conversion",
+                "entries": _currency_entries(),
             },
             {
                 "category": (

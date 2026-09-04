@@ -1037,3 +1037,68 @@ new API tests against the real seeded data (the Capesize/Newcastle
 3-and-3 split with reasons, the Handysize/Taboneo custom-cargo case,
 unknown vessel/origin 404s, the cargo-exceeds-DWT 422, and a route-
 registration-order check). **108 passing tests total** (up from 98).
+
+## 25. INR secondary currency display, built as deferred (DECISIONS.md #20)
+
+Picked by the user as the next item after both named SIH26006
+problem-statement gaps closed (#23, #24). Deferred back at #20 until the
+3-page MVP was confirmed working — that condition is long since met.
+
+**Kept the #20 decision exactly as made:** USD stays the sole
+primary/source-of-truth currency throughout the engine and API. Every
+REAL price this app uses is genuinely USD-denominated in the real world
+(World Bank Pink Sheet commodity prices, Ship & Bunker VLSFO bunker
+price, HandyBulk time-charter day rates, IndexBox's coking-coal
+snapshot) — that's how international dry-bulk freight and commodity
+trade are actually priced, so USD-primary is what keeps the
+REAL/CALCULATED labelling honest. INR is added ONLY as a secondary,
+clearly-labelled CALCULATED conversion, shown alongside the USD figure
+it was derived from, never in place of it, and never used as the basis
+for any ranking, sort order, or decision logic anywhere in the app.
+
+**The rate:** new `backend/app/engine/currency.py`, one cited constant,
+`USD_TO_INR_RATE = 94.43`. Cross-checked across two independent sources
+before being set, not taken from a single unverified number: Trading
+Economics' USD/INR spot quote (94.4290-94.4380 intraday) on 2026-09-04
+agrees with State Bank of India's same-day forex card rate (TT Buy
+94.13 / TT Sell 94.98) to within ~0.5%. Same treatment as voyage.py's
+bunker price and time-charter rates: a constant with a source and a
+date, refreshed on a schedule in a production system, not here.
+
+**Backend:** new `GET /api/v1/exchange-rate` endpoint serving the rate
+plus its source/URL/date — a single place the frontend fetches it from,
+rather than the number being hand-copied into every component that
+needs it. Also wired into `app/engine/data_sources.py` as a new
+"Currency conversion" category (CALCULATED, 1 entry) so the Data Sources
+& Assumptions page's claim to cover "every figure this app uses" stays
+true — `test_data_sources_endpoint`'s category count moved from 6 to 7
+correctly, not silently.
+
+**Frontend:** a shared `frontend/src/hooks/useExchangeRate.js` (fetches
+the rate once per page, fails silently — an INR line is a nice-to-have
+on top of an already-shown USD figure, never worth its own error box)
+and `frontend/src/utils/currency.js`'s `formatInr(usdValue, exchangeRate)`
+(Indian digit grouping via `toLocaleString("en-IN", {style: "currency",
+currency: "INR"})` — ₹1,23,456 rather than ₹123,456). Wired into every
+headline USD figure a user actually reads a decision off: Overview's
+three commodity-price stat cards, Forecast's decision card (latest price
+and forecast price — deliberately NOT the chart itself, since a second
+currency axis would be a dual-axis chart, the dataviz skill's #1
+anti-pattern; the stat cards carry the CALCULATED INR figure instead),
+and both Recommendation modes' ranked option cards (risk-adjusted cost
+per tonne). Voyage's own fuel/charter/total cost breakdown inside each
+card's `<details>` expander was deliberately left USD-only — a
+documented scope choice to keep this addition sized to what a user
+reads a decision off, not a hunt for every dollar figure in the app.
+
+**Verified before writing this down:** every wired location was checked
+in a running sandbox — including forcing `coal_australian`'s forecast to
+`status: "ok"` with a temporary 36-row synthetic history (verification-
+only, deleted immediately after, never touched anything pushed to the
+user's machine) to confirm the Forecast decision card's INR line
+actually renders in its "ok" branch, not just its already-checked
+insufficient_data branch. 5 new tests (`test_currency.py`: the
+conversion arithmetic, the `as_dict()` shape, the live endpoint) plus 2
+updated (`test_data_sources_endpoint`'s category count, a new dedicated
+currency-category test) — **113 passing tests total** (up from 108).
+Zero console errors across all 4 pages, clean `npm run build`.

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import ForecastChart from "../components/ForecastChart";
+import { useExchangeRate } from "../hooks/useExchangeRate";
+import { formatInr } from "../utils/currency";
 
 const COMMODITIES = [
   { id: "coking_coal", label: "Coking coal (Australian, metallurgical)" },
@@ -54,7 +56,7 @@ function useForecastData(commodity, horizon) {
   return state;
 }
 
-function DecisionCard({ decision }) {
+function DecisionCard({ decision, fx }) {
   if (decision.status !== "ok") {
     return (
       <div className="decision-card decision-card-muted">
@@ -78,10 +80,16 @@ function DecisionCard({ decision }) {
       <div className="stat-row">
         <div className="stat-card">
           <span className="stat-value">${decision.latest_price_usd.toFixed(2)}</span>
+          {formatInr(decision.latest_price_usd, fx) && (
+            <span className="stat-sub">≈ {formatInr(decision.latest_price_usd, fx)}</span>
+          )}
           <span className="stat-label">Latest ({decision.latest_date})</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">${decision.forecast_price_usd.toFixed(2)}</span>
+          {formatInr(decision.forecast_price_usd, fx) && (
+            <span className="stat-sub">≈ {formatInr(decision.forecast_price_usd, fx)}</span>
+          )}
           <span className="stat-label">
             Forecast ({decision.horizon_months}mo, {decision.target_date})
           </span>
@@ -152,6 +160,7 @@ export default function Forecast() {
   const [commodity, setCommodity] = useState(DEFAULT_COMMODITY_ID);
   const [horizon, setHorizon] = useState(6);
   const { loading, error, data } = useForecastData(commodity, horizon);
+  const fx = useExchangeRate();
 
   return (
     <div className="page">
@@ -214,7 +223,7 @@ export default function Forecast() {
           </section>
 
           <section className="section">
-            <DecisionCard decision={data.decision} />
+            <DecisionCard decision={data.decision} fx={fx} />
           </section>
 
           <MetricsPanel

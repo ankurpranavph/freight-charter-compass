@@ -15,6 +15,7 @@ from app.db.connection import db_session
 from app.db.seed import run_seed
 from app.engine.book_or_wait import DEFAULT_DECISION_HORIZON, evaluate_book_or_wait
 from app.engine.compatibility import build_matrix, check_compatibility
+from app.engine.currency import as_dict as exchange_rate_dict
 from app.engine.data_sources import build_data_sources
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 from app.engine.optimizer import CargoExceedsCapacityError, rank_options, rank_ports_for_vessel
@@ -299,6 +300,18 @@ def book_or_wait(
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return result.as_dict()
+
+
+@app.get("/api/v1/exchange-rate")
+def exchange_rate():
+    """Module 8: the single cited USD->INR rate used to show every USD
+    figure in the app with a secondary INR figure alongside it. USD stays
+    the source-of-truth currency everywhere in the engine and API — this
+    endpoint exists so the frontend can compute a display-only INR figure
+    from it in one place rather than the rate being hand-copied into
+    multiple components. See app/engine/currency.py and DECISIONS.md
+    #25."""
+    return exchange_rate_dict()
 
 
 @app.get("/api/v1/data-sources")
