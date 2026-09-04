@@ -31,24 +31,19 @@ punch list; it should always reflect reality, not the original plan.
 
 ## Current task
 
-Frontend shell (Hour 17-23) is DONE and committed (09-frontend-mvp-pages):
-scaffold, routing, API client, and all three pages (Overview, Forecast,
-Recommendation) are live against real data, verified in a sandbox
-headless browser, and confirmed by the user on their own machine.
+The locked 5-page MVP (DECISIONS.md #7) is fully built, confirmed by the
+user on their own machine, and committed (10-data-sources-page):
+Overview, Freight Forecast, Vessel & Port Recommendation (which also
+fulfils "Cost Optimization" -- same Module 6 ranking, one page, not two
+-- see DECISIONS.md #20), and Data Sources & Assumptions (new
+`GET /api/v1/data-sources` endpoint + `/data-sources` page -- see
+DECISIONS.md #21). 81 passing tests, all wired into the running API.
 
-The locked 5-page MVP (DECISIONS.md #7) is now fully built: Overview,
-Freight Forecast, Vessel & Port Recommendation (which also fulfils "Cost
-Optimization" -- same Module 6 ranking, one page, not two -- see
-DECISIONS.md #20), and Data Sources & Assumptions (new
-`GET /api/v1/data-sources` endpoint + `/data-sources` page, reading
-sourcing live off the same seeded rows and cited constants every other
-page already uses rather than a separate hand-maintained list -- see
-DECISIONS.md #21). 81 passing tests (72 -> 81: 9 new for the data-sources
-endpoint). Verified in a sandbox headless browser; awaiting the user's
-own on-machine confirmation before the commit lands.
-
-INR currency display was discussed and deliberately deferred to later,
-after the MVP pages are confirmed working -- see DECISIONS.md #20.
+At the Hour 27-29 checkpoint from the original build order: on schedule
+to add ports 4-6 (Gangavaram, Krishnapatnam, Haldia) and start Phase 2.
+The deliberately-deferred INR secondary currency display (DECISIONS.md
+#20) is also still open. Which one to build next has been put to the
+user rather than assumed -- see the question raised in chat.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -175,11 +170,14 @@ after the MVP pages are confirmed working -- see DECISIONS.md #20.
             spread over fewer tonnes changes the winner at low cargo
             sizes), and the compatibility-detail expander, all with zero
             console errors.
-- [ ] **Frontend, rest of MVP (Hour 23–27):** Cost Optimization page, Data
-      Sources & Assumptions page generated from `/api/v1/data-sources`.
+- [x] **Frontend, rest of MVP (Hour 23–27), done:** Cost Optimization is
+      fulfilled by the Recommendation page (DECISIONS.md #20); Data
+      Sources & Assumptions page shipped in 10-data-sources-page
+      (DECISIONS.md #21).
 - [ ] **Checkpoint (Hour 27–29):** if on schedule, add ports 4–6
       (Gangavaram, Krishnapatnam, Haldia) and start Phase 2. If behind,
-      skip straight to polish.
+      skip straight to polish. -- On schedule; next module choice (ports
+      4-6 vs. the deferred INR display) put to the user.
 - [ ] **Phase 2 / Polish (Hour 29–33)**
 - [ ] **Demo readiness (Hour 33–36):** rehearse the demo script twice,
       freeze the build.
