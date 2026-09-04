@@ -17,7 +17,7 @@ from app.engine.book_or_wait import DEFAULT_DECISION_HORIZON, evaluate_book_or_w
 from app.engine.compatibility import build_matrix, check_compatibility
 from app.engine.data_sources import build_data_sources
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
-from app.engine.optimizer import rank_options
+from app.engine.optimizer import CargoExceedsCapacityError, rank_options, rank_ports_for_vessel
 from app.engine.voyage import calculate_voyage
 
 
@@ -202,6 +202,55 @@ def voyage_calculate(
     except KeyError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return result.as_dict()
+
+
+@app.get("/api/v1/optimize/by-vessel")
+def optimize_by_vessel(
+    vessel_type: str,
+    origin_id: str,
+    cargo_tonnes: float | None = Query(None, gt=0),
+):
+    """Module 6, mirrored direction: fixed vessel class + overseas
+    loading port — which of the 6 East Coast destinations should this
+    cargo actually go to? /api/v1/optimize/{port_id} answers the other
+    question (fixed destination, rank vessel x origin); this fixes
+    vessel x origin and ranks destinations instead — added after
+    re-checking the app against the SIH26006 problem statement, since a
+    real charterer usually starts here, not with a port already picked.
+    Registered ahead of /api/v1/optimize/{port_id} so "by-vessel" is
+    never swallowed as a port_id. Every port is returned: compatible
+    ones ranked by risk-adjusted cost/tonne, incompatible ones with the
+    exact reason (never silently dropped — see
+    app/engine/optimizer.py's rank_ports_for_vessel). 404 for an
+    unknown vessel_type/origin_id; 422 if cargo_tonnes exceeds this
+    vessel's own DWT (true at every port, so checked once)."""
+    with db_session() as conn:
+        vessel_row = conn.execute(
+            "SELECT * FROM vessel_classes WHERE vessel_type = ?", (vessel_type,)
+        ).fetchone()
+        origin_row = conn.execute(
+            "SELECT * FROM origin_ports WHERE origin_id = ?", (origin_id.upper(),)
+        ).fetchone()
+        if vessel_row is None:
+            raise HTTPException(status_code=404, detail=f"Unknown vessel_type '{vessel_type}'")
+        if origin_row is None:
+            raise HTTPException(status_code=404, detail=f"Unknown origin_id '{origin_id}'")
+        ports = [dict(r) for r in conn.execute("SELECT * FROM ports").fetchall()]
+    try:
+        compatible, incompatible = rank_ports_for_vessel(
+            dict(vessel_row), dict(origin_row), ports, cargo_tonnes=cargo_tonnes
+        )
+    except CargoExceedsCapacityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "vessel_type": vessel_type,
+        "origin_id": origin_id.upper(),
+        "cargo_tonnes": cargo_tonnes,
+        "compatible_ports": [
+            {**opt.as_dict(), "rank": i + 1} for i, opt in enumerate(compatible)
+        ],
+        "incompatible_ports": incompatible,
+    }
 
 
 @app.get("/api/v1/optimize/{port_id}")

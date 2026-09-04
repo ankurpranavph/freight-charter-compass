@@ -21,25 +21,29 @@ ingested commodity price history for three commodities — coal
 (thermal AND coking, priced and forecast separately since SAIL procures
 coking coal, not thermal — see DECISIONS.md #23) and crude oil — a
 SARIMAX forecast model, a physical vessel/port compatibility gate, a
-voyage cost calculator, a risk-adjusted optimizer, a book-now-vs-wait
-recommendation, and a Data Sources & Assumptions catalog, covering 6
-East Coast ports (Visakhapatnam, Paradip, Dhamra, Gangavaram,
-Krishnapatnam, Haldia) — 98 passing tests, all wired into the running
-API. The frontend (React + Vite) has all 5 locked MVP pages built —
-Overview, Forecast (SARIMAX chart + decision card), Recommendation
-(ranked vessel/route options, which also covers Cost Optimization), and
-Data Sources & Assumptions (every REAL/CALCULATED/SIMULATED/ASSUMPTION
-figure the app uses, in one place) — all live against the real API and
-verified in a sandbox headless browser, fully data-driven so ports 4-6
-needed zero frontend changes (confirmed by the user, committed as
-`11-ports-4-6`). The coking-coal fix is verified in the sandbox and
-awaiting confirmation on the user's own machine — its own real-history
-ingestion script (RBA Index of Commodity Prices) is written but not yet
-run by anyone against the real file, so the app currently forecasts
-coking coal as "insufficient data" honestly rather than faking a
-series. A cross-port recommendation ranking, an INR secondary currency
-display, and Indian port traffic history remain open. See TODO.md for
-the exact punch list.
+voyage cost calculator, a risk-adjusted optimizer that ranks in both
+directions (destination-first, and now vessel-first across all 6 ports
+— DECISIONS.md #24), a book-now-vs-wait recommendation, and a Data
+Sources & Assumptions catalog, covering 6 East Coast ports
+(Visakhapatnam, Paradip, Dhamra, Gangavaram, Krishnapatnam, Haldia) —
+108 passing tests, all wired into the running API. The frontend
+(React + Vite) has all 5 locked MVP pages built — Overview, Forecast
+(SARIMAX chart + decision card), Recommendation (now genuinely
+interactive: pick your own vessel, loading port, cargo size and horizon
+and get a live ranked answer across all 6 destinations, or the original
+destination-first view), and Data Sources & Assumptions (every
+REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app uses, in one place)
+— all live against the real API and verified in a sandbox headless
+browser, fully data-driven so ports 4-6 needed zero frontend changes
+(confirmed by the user, committed as `11-ports-4-6`). The coking-coal
+proxy fix is confirmed and committed (`12-coking-coal-proxy`); its own
+real-history ingestion script (RBA Index of Commodity Prices) is
+written but not yet run by anyone against the real file, so the app
+currently forecasts coking coal as "insufficient data" honestly rather
+than faking a series. The cross-port recommendation module is verified
+in the sandbox and awaiting confirmation on the user's own machine. An
+INR secondary currency display and Indian port traffic history remain
+open. See TODO.md for the exact punch list.
 
 ## Quick start (backend)
 

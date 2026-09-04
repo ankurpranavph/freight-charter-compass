@@ -951,3 +951,89 @@ end-to-end in a sandbox headless browser: Overview's third stat tile,
 Forecast's honest insufficient-data message (correct script name), and
 Data Sources' "single dated snapshot" wording all render correctly, zero
 console errors, `npm run build` clean.
+
+## 24. Cross-port recommendation, and making the Recommendation page genuinely interactive
+
+The second of the two gaps named when the user asked whether the app
+satisfies the SIH26006 problem statement (the first, the coking-coal
+proxy fix, closed in #23). Then the user asked directly for the app to
+be more interactive — "a way for the people who use these port services
+to add their thing and check" — which turned out to be the same gap
+wearing a different name: the missing direction was never a chart
+feature, it was letting a real user start from what they actually have
+(a ship, a loading port) instead of a destination they'd have to already
+know to pick.
+
+**The gap:** `/api/v1/optimize/{port_id}` — and the Recommendation page
+built on it — only ever answers "given this destination port, which
+vessel/route is cheapest?" A real charterer usually starts the other way
+round: "I have this vessel class loading from this port, which of the 6
+East Coast destinations should the cargo actually go to?" There was no
+way to ask that question without already knowing the answer.
+
+**What changed, backend:** `app/engine/optimizer.py` gained
+`rank_ports_for_vessel(vessel, origin, ports, cargo_tonnes=None)` — the
+mirror of the existing `rank_options`, fixing the vessel and origin
+instead of the port. Both directions now share one `_score_option`
+helper so the risk-margin methodology (Module 6, DECISIONS.md #16) can
+never drift apart between them. New endpoint:
+`GET /api/v1/optimize/by-vessel?vessel_type=&origin_id=&cargo_tonnes=`,
+registered ahead of `/api/v1/optimize/{port_id}` so the literal segment
+`by-vessel` is never swallowed as a port_id.
+
+One deliberate difference from `rank_options`: **incompatible ports are
+never silently dropped.** `rank_options` iterating over vessels for a
+fixed port can afford to drop a failing vessel — there are others to
+rank. Here there are only 6 named, enumerable destinations, and a real
+user picking among them benefits from seeing all 6 with the exact reason
+a given one doesn't work, not a shorter list they can't account for. The
+response splits `compatible_ports` (ranked, same shape as before) from
+`incompatible_ports` (each with its Module 4 checks and reasons).
+
+`cargo_tonnes` exceeding the fixed vessel's own DWT is a fact independent
+of which port is picked, so it's validated once up front
+(`CargoExceedsCapacityError` → HTTP 422 with a plain-language message)
+rather than silently producing 6 empty compatibility checks.
+
+**What changed, frontend:** the Recommendation page gained a mode toggle
+— "By vessel & loading port" (new, and now the default) vs. "By
+destination port" (the original behaviour, unchanged, still reachable).
+The new mode lets the user pick a vessel class, an overseas loading port,
+an optional custom cargo tonnage, and a forecast horizon (3/6/12/24
+months); it shows the ranked compatible destinations as cards (reusing
+the same option-card pattern as the original mode) and the incompatible
+ones as a plainly-labelled list with their real reasons underneath, never
+just missing. This is the genuinely interactive piece the user asked
+for: not a static demo of the algorithm, but a form a real user plugs
+their own scenario into and gets a live, computed answer back.
+
+**Timing, composed not duplicated:** the same panel shows two timing
+cards side by side — "should I book now or wait?" for both thermal coal
+and coking coal at the chosen horizon — by calling the existing
+`GET /api/v1/decision/book-vs-wait/{commodity}` (Module 7, unchanged) for
+both commodities at once. No new timing logic was written; this is
+composition of an existing endpoint, same discipline as the optimizer
+itself composing Modules 4 and 5. Coking coal's card correctly shows the
+honest `insufficient_data` message (1 real seeded point, DECISIONS.md
+#23) rather than a fabricated verdict.
+
+**Verified against real, not cherry-picked, data before writing tests:**
+a Capesize out of Newcastle clears exactly 3 of the 6 ports
+(Krishnapatnam #1 at $7.83/t risk-adjusted, Vizag #2, Gangavaram #3) and
+fails the other 3 (Paradip: draft + LOA; Dhamra: LOA only; Haldia: all
+three dimensions) — the same three that clear it in the existing
+port-first direction, confirming the two directions agree. A Handysize
+out of Taboneo with a fixed 20,000t cargo clears 5 of 6, failing only at
+Haldia's 9.1m draft limit. Both scenarios are hand-run against the live
+API before being written into assertions, then screenshotted end-to-end
+in a sandbox headless browser (both modes, the cargo-exceeds-DWT error
+path, and the timing cards) with zero console errors and a clean
+`npm run build`.
+
+Test coverage: 4 new unit tests for `rank_ports_for_vessel` against
+synthetic fixtures (compatible/incompatible split, ascending sort, the
+`CargoExceedsCapacityError` path, and the all-incompatible case) plus 6
+new API tests against the real seeded data (the Capesize/Newcastle
+3-and-3 split with reasons, the Handysize/Taboneo custom-cargo case,
+unknown vessel/origin 404s, the cargo-exceeds-DWT 422, and a route-
+registration-order check). **108 passing tests total** (up from 98).

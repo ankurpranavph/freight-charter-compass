@@ -130,6 +130,14 @@ not created speculatively upfront.
   clearance margin at berth, see DECISIONS.md #16). 404 for an unknown
   port_id. An incompatible or too-small-for-cargo_tonnes option is simply
   absent from the ranking, not flagged.
+- `GET /api/v1/optimize/by-vessel?vessel_type=&origin_id=&cargo_tonnes=`
+  — Module 6, mirrored: fixed vessel class + loading port, ranks the 6
+  East Coast destinations instead. Registered ahead of
+  `/api/v1/optimize/{port_id}` so `by-vessel` is never swallowed as a
+  port_id. Unlike the port-first direction, incompatible ports are
+  returned too (with reasons), never dropped — see DECISIONS.md #24. 404
+  for an unknown vessel_type/origin_id; 422 if cargo_tonnes exceeds the
+  vessel's own DWT.
 - `GET /api/v1/decision/book-vs-wait/{commodity}?horizon=1..24` — Module
   7: reuses Module 1's own forecast (no second model) to recommend
   BOOK_NOW / WAIT / HOLD, with an honest `confidence: "low"` flag when
@@ -358,12 +366,31 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   commodity. 11 new tests — **98 passing tests total.** See
   DECISIONS.md #23.
 
+- **Cross-port recommendation, and a genuinely interactive Recommendation
+  page:** the second named gap, closed after the user separately asked
+  for the app to be more interactive — the two turned out to be the same
+  gap. `app/engine/optimizer.py` gained `rank_ports_for_vessel`, the
+  mirror of `rank_options`: fixed vessel + loading port, ranks the 6
+  destinations instead of fixing the destination and ranking
+  vessel/route. New endpoint `GET /api/v1/optimize/by-vessel`.
+  Incompatible ports are returned with their reasons, never dropped —
+  there are only 6 named destinations, so a real user benefits from
+  seeing all of them. The Recommendation page gained a mode toggle ("by
+  vessel & loading port" is now the default) where a user picks their
+  own vessel class, loading port, optional custom cargo tonnage, and a
+  forecast horizon, and gets back live ranked destinations plus two
+  book-now-vs-wait timing cards (thermal and coking coal, reusing Module
+  7 unchanged) — a real form a user plugs their own scenario into, not a
+  static demo. Verified against real, hand-run API output before writing
+  tests: Capesize/Newcastle clears exactly 3 of 6 ports, matching the
+  port-first direction's own result for those same three ports; 10 new
+  tests — **108 passing tests total.** See DECISIONS.md #24.
+
 **Not yet built:** the real RBA coking-coal ingestion has not been run
 for real by anyone yet (script exists, layout unverified — see
-DECISIONS.md #23); a cross-port recommendation ranking (the other named
-gap against the problem statement — not yet started); Indian port
-traffic history; and an INR secondary currency display (deliberately
-deferred — DECISIONS.md #20) — see TODO.md for exact next steps.
+DECISIONS.md #23); Indian port traffic history; and an INR secondary
+currency display (deliberately deferred — DECISIONS.md #20) — see
+TODO.md for exact next steps.
 
 ## Important assumptions
 

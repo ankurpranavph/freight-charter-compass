@@ -26,6 +26,17 @@ DWT, that vessel is excluded for this port rather than silently computing
 a cost-per-tonne that implies one voyage carries more cargo than the
 vessel can actually hold — a single voyage per option is what Module 5
 prices, not a multi-voyage plan (not modeled, see docs/TODO.md).
+
+TWO DIRECTIONS, ONE SCORING FUNCTION: `rank_options` fixes the
+destination port and ranks every vessel x origin combination for it —
+"I know where I'm shipping to, what should I book?" `rank_ports_for_vessel`
+fixes the vessel and origin instead, and ranks the 6 destination ports —
+"I already have a ship and a loading port, where should it go?" Added at
+the Hour 30+ checkpoint after re-checking the app against the SIH26006
+problem statement: a real charterer usually starts from the second
+question, not the first, and a fixed `port_id` in the URL meant that
+question had no answer before this. Both directions call `_score_option`
+so the risk-margin methodology never diverges between them.
 """
 from dataclasses import dataclass
 
@@ -98,6 +109,39 @@ class RankedOption:
         }
 
 
+class CargoExceedsCapacityError(ValueError):
+    """Raised when a fixed cargo_tonnes exceeds a single fixed vessel's
+    own DWT — a fact about the vessel, independent of which port is
+    picked, so rank_ports_for_vessel checks it once up front instead of
+    silently excluding all 6 ports one at a time."""
+
+
+def _score_option(vessel: dict, origin: dict, port: dict, cargo_tonnes: float | None):
+    """Shared by both ranking directions. Returns (RankedOption, compat)
+    if the vessel physically fits this port, or (None, compat) if not —
+    the caller decides whether a failing compat result is dropped
+    (rank_options) or reported with its reasons (rank_ports_for_vessel)."""
+    compat = check_compatibility(vessel, port)
+    if not compat.compatible:
+        return None, compat
+    margin_ratio = _tightest_margin_ratio(compat.checks)
+    risk_mult = _risk_multiplier(margin_ratio)
+    voyage = calculate_voyage(vessel, origin, port, cargo_tonnes=cargo_tonnes)
+    risk_adjusted = voyage.cost_per_tonne_usd * risk_mult
+    option = RankedOption(
+        vessel_type=vessel["vessel_type"],
+        origin_id=origin["origin_id"],
+        port_id=port["port_id"],
+        cost_per_tonne_usd=voyage.cost_per_tonne_usd,
+        risk_multiplier=risk_mult,
+        risk_adjusted_cost_per_tonne_usd=risk_adjusted,
+        tightest_margin_ratio=margin_ratio,
+        voyage=voyage.as_dict(),
+        compatibility=compat.as_dict(),
+    )
+    return option, compat
+
+
 def rank_options(
     port: dict,
     vessels: list,
@@ -115,28 +159,45 @@ def rank_options(
     for vessel in vessels:
         if cargo_tonnes is not None and cargo_tonnes > vessel["dwt_tonnes"]:
             continue
-
-        compat = check_compatibility(vessel, port)
-        if not compat.compatible:
-            continue
-        margin_ratio = _tightest_margin_ratio(compat.checks)
-        risk_mult = _risk_multiplier(margin_ratio)
-
         for origin in origins:
-            voyage = calculate_voyage(vessel, origin, port, cargo_tonnes=cargo_tonnes)
-            risk_adjusted = voyage.cost_per_tonne_usd * risk_mult
-            options.append(
-                RankedOption(
-                    vessel_type=vessel["vessel_type"],
-                    origin_id=origin["origin_id"],
-                    port_id=port["port_id"],
-                    cost_per_tonne_usd=voyage.cost_per_tonne_usd,
-                    risk_multiplier=risk_mult,
-                    risk_adjusted_cost_per_tonne_usd=risk_adjusted,
-                    tightest_margin_ratio=margin_ratio,
-                    voyage=voyage.as_dict(),
-                    compatibility=compat.as_dict(),
-                )
-            )
+            option, _compat = _score_option(vessel, origin, port, cargo_tonnes)
+            if option is not None:
+                options.append(option)
     options.sort(key=lambda o: o.risk_adjusted_cost_per_tonne_usd)
     return options
+
+
+def rank_ports_for_vessel(
+    vessel: dict,
+    origin: dict,
+    ports: list,
+    cargo_tonnes: float | None = None,
+) -> tuple[list[RankedOption], list]:
+    """The mirror of rank_options: vessel: a row from `vessel_classes`.
+    origin: a row from `origin_ports`. ports: rows from `ports` (all 6).
+    Returns (compatible, incompatible) — compatible is sorted best-first
+    like rank_options; incompatible is a list of CompatibilityResult
+    dicts (via .as_dict()), one per port that fails Module 4's gate,
+    WITH its reasons. Unlike rank_options, incompatible ports are never
+    silently dropped: a real user choosing among 6 named, enumerable
+    destinations benefits from seeing all 6 and why, not a shortened
+    list with no explanation for the missing ones.
+
+    Raises CargoExceedsCapacityError if cargo_tonnes exceeds this
+    vessel's own DWT — checked once, since it's true at every port."""
+    if cargo_tonnes is not None and cargo_tonnes > vessel["dwt_tonnes"]:
+        raise CargoExceedsCapacityError(
+            f"{cargo_tonnes:,.0f}t exceeds {vessel['vessel_type']}'s "
+            f"{vessel['dwt_tonnes']:,.0f}t DWT — pick a smaller cargo size "
+            f"or a larger vessel class."
+        )
+    compatible = []
+    incompatible = []
+    for port in ports:
+        option, compat = _score_option(vessel, origin, port, cargo_tonnes)
+        if option is not None:
+            compatible.append(option)
+        else:
+            incompatible.append(compat.as_dict())
+    compatible.sort(key=lambda o: o.risk_adjusted_cost_per_tonne_usd)
+    return compatible, incompatible

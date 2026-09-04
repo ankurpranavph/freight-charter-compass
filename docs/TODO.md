@@ -47,7 +47,7 @@ Recommend, with two named gaps (coking-vs-thermal-coal proxy, and no
 cross-port recommendation). User chose to fix both, one at a time,
 starting with the coking coal proxy.
 
-**Coking coal proxy fix, done, awaiting on-machine confirmation:**
+**Coking coal proxy fix, done, confirmed, committed (`12-coking-coal-proxy`):**
 `coal_australian` was thermal coal (confirmed by fetching the real World
 Bank Pink Sheet's own columns -- no coking coal line at all), but SAIL
 procures coking (metallurgical) coal. Added `coking_coal`, sourced from
@@ -59,13 +59,26 @@ FRED's too-short 18-month series) via a new
 the real file (unlike the World Bank one) -- see DECISIONS.md #23. One
 real cited coking-coal snapshot ($214.90/t, 7 Aug 2026) seeded now so the
 app degrades honestly (insufficient_data, correct script name) rather
-than showing nothing. 98 passing tests (up from 87). Verified in a
-sandbox headless browser; not yet confirmed on the user's own machine,
-and the real RBA ingestion has not been run by anyone yet.
+than showing nothing. 98 passing tests at the time.
 
-Still open after that: cross-port recommendation (the other named gap),
-the deliberately-deferred INR secondary currency display (DECISIONS.md
-#20), and Indian port traffic history.
+**Cross-port recommendation + interactive Recommendation page, done,
+awaiting on-machine confirmation:** the second named gap -- closed after
+the user also asked, separately, for the app to be more interactive.
+New `rank_ports_for_vessel` in `app/engine/optimizer.py` (mirrors
+`rank_options`: fixed vessel + loading port, ranks the 6 destinations)
+and `GET /api/v1/optimize/by-vessel`. The Recommendation page gained a
+mode toggle -- "by vessel & loading port" (new default): pick a vessel
+class, loading port, optional custom cargo tonnage, and a forecast
+horizon, and get back live ranked destinations (incompatible ones shown
+too, with reasons, never dropped) plus book-now-vs-wait timing cards for
+both commodities. "By destination port" (the original page) is still
+there, unchanged. 108 passing tests (up from 98). Verified in a sandbox
+headless browser; not yet confirmed on the user's own machine. See
+DECISIONS.md #24.
+
+Still open after that: the deliberately-deferred INR secondary currency
+display (DECISIONS.md #20), Indian port traffic history, and the real
+RBA coking-coal ingestion, which no one has run for real yet.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 

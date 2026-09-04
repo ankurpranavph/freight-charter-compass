@@ -77,6 +77,12 @@ export const api = {
     }),
   optimize: (portId, cargoTonnes) =>
     request(`/api/v1/optimize/${portId}`, { cargo_tonnes: cargoTonnes }),
+  optimizeByVessel: (vesselType, originId, cargoTonnes) =>
+    request("/api/v1/optimize/by-vessel", {
+      vessel_type: vesselType,
+      origin_id: originId,
+      cargo_tonnes: cargoTonnes,
+    }),
   bookOrWait: (commodity, horizon) =>
     request(`/api/v1/decision/book-vs-wait/${commodity}`, { horizon }),
   dataSources: () => request("/api/v1/data-sources"),

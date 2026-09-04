@@ -663,6 +663,48 @@ tbody tr:last-child td {
 }
 
 /* ---------------------------------------------------------------------
+   Recommendation page — "by vessel" mode: timing cards + the
+   incompatible-ports list (never dropped silently, see DECISIONS.md #24)
+   ------------------------------------------------------------------- */
+
+.timing-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.timing-row .decision-card {
+  flex: 1;
+  min-width: 260px;
+}
+
+.incompat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.incompat-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.incompat-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.incompat-body strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+/* ---------------------------------------------------------------------
    Data Sources & Assumptions page
    ------------------------------------------------------------------- */
 

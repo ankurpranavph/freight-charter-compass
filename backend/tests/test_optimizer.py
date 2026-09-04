@@ -26,9 +26,11 @@ from fastapi.testclient import TestClient
 from app.engine.optimizer import (
     MAX_RISK_PENALTY,
     SAFE_MARGIN_RATIO,
+    CargoExceedsCapacityError,
     _risk_multiplier,
     _tightest_margin_ratio,
     rank_options,
+    rank_ports_for_vessel,
 )
 from app.main import app
 
@@ -124,6 +126,52 @@ def test_rank_options_excludes_vessel_smaller_than_fixed_cargo():
 
 
 # ---------------------------------------------------------------------
+# rank_ports_for_vessel(), synthetic data — the mirrored direction
+# ---------------------------------------------------------------------
+
+TIGHT_PORT = {
+    "port_id": "TIGHTPORT", "lat": 12.0, "lon": 81.0,
+    "max_draft_m": 12.0, "max_loa_m": 200.0, "max_beam_m": 32.0, "coal_handling": 1,
+}
+
+
+def test_rank_ports_for_vessel_returns_compatible_and_incompatible():
+    compatible, incompatible = rank_ports_for_vessel(
+        BIG_VESSEL, ORIGIN, [GENEROUS_PORT, TIGHT_PORT]
+    )
+    assert len(compatible) == 1
+    assert compatible[0].port_id == "TESTPORT"
+    assert len(incompatible) == 1
+    assert incompatible[0]["port_id"] == "TIGHTPORT"
+    assert incompatible[0]["compatible"] is False
+    assert incompatible[0]["reasons"]  # never dropped silently — reasons are present
+
+
+def test_rank_ports_for_vessel_sorted_ascending_by_risk_adjusted_cost():
+    compatible, _incompatible = rank_ports_for_vessel(
+        SMALL_VESSEL, ORIGIN, [GENEROUS_PORT, TIGHT_PORT]
+    )
+    costs = [o.risk_adjusted_cost_per_tonne_usd for o in compatible]
+    assert costs == sorted(costs)
+
+
+def test_rank_ports_for_vessel_raises_on_cargo_exceeding_dwt():
+    # SMALL_VESSEL's DWT is 35000 — a 50000t fixed cargo exceeds it at
+    # every port, so this is checked once up front, not per-port.
+    with pytest.raises(CargoExceedsCapacityError):
+        rank_ports_for_vessel(SMALL_VESSEL, ORIGIN, [GENEROUS_PORT], cargo_tonnes=50000)
+
+
+def test_rank_ports_for_vessel_no_ports_compatible():
+    # A vessel too big for every port on offer: compatible is empty,
+    # incompatible carries all of them with real reasons — never a crash
+    # or a silently-empty response with no explanation.
+    compatible, incompatible = rank_ports_for_vessel(TOO_DEEP_VESSEL, ORIGIN, [TIGHT_PORT])
+    assert compatible == []
+    assert len(incompatible) == 1
+
+
+# ---------------------------------------------------------------------
 # API tests, real seeded data
 # ---------------------------------------------------------------------
 
@@ -206,3 +254,78 @@ def test_optimize_haldia_returns_no_options(client):
     r = client.get("/api/v1/optimize/HALDIA")
     assert r.status_code == 200
     assert r.json() == []
+
+
+# ---------------------------------------------------------------------
+# /api/v1/optimize/by-vessel — mirrored direction, real seeded data.
+# Verified by hand-running the endpoint before writing these assertions
+# (see DECISIONS.md): a Capesize out of Newcastle clears exactly 3 of the
+# 6 ports (Krishnapatnam, Vizag, Gangavaram — the same three that clear
+# it in the port-first direction) and fails the other 3, each for a real,
+# distinct reason; a Handysize out of Taboneo with a 20,000t fixed cargo
+# clears 5 of 6, failing only at Haldia's 9.1m draft limit.
+# ---------------------------------------------------------------------
+
+def test_optimize_by_vessel_capesize_newcastle_splits_3_and_3(client):
+    r = client.get("/api/v1/optimize/by-vessel?vessel_type=Capesize&origin_id=NEWCASTLE_AU")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["vessel_type"] == "Capesize"
+    assert body["origin_id"] == "NEWCASTLE_AU"
+
+    compat_ids = [p["port_id"] for p in body["compatible_ports"]]
+    assert compat_ids == ["KRISHNAPATNAM", "VIZAG", "GANGAVARAM"]  # rank order, cheapest first
+    ranks = [p["rank"] for p in body["compatible_ports"]]
+    assert ranks == [1, 2, 3]
+
+    incompat_ids = {p["port_id"] for p in body["incompatible_ports"]}
+    assert incompat_ids == {"PARADIP", "DHAMRA", "HALDIA"}
+    for entry in body["incompatible_ports"]:
+        assert entry["compatible"] is False
+        assert entry["reasons"]  # every exclusion is explained, never silent
+
+
+def test_optimize_by_vessel_handysize_taboneo_custom_cargo(client):
+    r = client.get(
+        "/api/v1/optimize/by-vessel?vessel_type=Handysize&origin_id=TABONEO_ID&cargo_tonnes=20000"
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["cargo_tonnes"] == 20000.0
+
+    compat_ids = [p["port_id"] for p in body["compatible_ports"]]
+    assert len(compat_ids) == 5
+    incompat_ids = [p["port_id"] for p in body["incompatible_ports"]]
+    assert incompat_ids == ["HALDIA"]  # only port Handysize's 10.0m draft can't clear
+
+    # every voyage in the response actually used the user's 20,000t figure,
+    # not the vessel's full DWT
+    for opt in body["compatible_ports"]:
+        assert opt["voyage"]["cargo_tonnes"] == 20000.0
+        assert opt["voyage"]["assumptions"]["cargo_tonnes_basis"] == "user-specified"
+
+
+def test_optimize_by_vessel_unknown_vessel_404(client):
+    r = client.get("/api/v1/optimize/by-vessel?vessel_type=Nope&origin_id=NEWCASTLE_AU")
+    assert r.status_code == 404
+
+
+def test_optimize_by_vessel_unknown_origin_404(client):
+    r = client.get("/api/v1/optimize/by-vessel?vessel_type=Capesize&origin_id=NOPE")
+    assert r.status_code == 404
+
+
+def test_optimize_by_vessel_cargo_exceeds_dwt_422(client):
+    r = client.get(
+        "/api/v1/optimize/by-vessel?vessel_type=Handysize&origin_id=NEWCASTLE_AU&cargo_tonnes=999999"
+    )
+    assert r.status_code == 422
+    assert "35,000t DWT" in r.json()["detail"]
+
+
+def test_optimize_by_vessel_route_registered_ahead_of_port_id(client):
+    # /api/v1/optimize/{port_id} is registered right after this route —
+    # confirms "by-vessel" is never swallowed as a port_id and 404'd.
+    r = client.get("/api/v1/optimize/by-vessel?vessel_type=Capesize&origin_id=NEWCASTLE_AU")
+    assert r.status_code == 200
+    assert "compatible_ports" in r.json()
