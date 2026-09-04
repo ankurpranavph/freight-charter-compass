@@ -79,6 +79,7 @@ export const api = {
     request(`/api/v1/optimize/${portId}`, { cargo_tonnes: cargoTonnes }),
   bookOrWait: (commodity, horizon) =>
     request(`/api/v1/decision/book-vs-wait/${commodity}`, { horizon }),
+  dataSources: () => request("/api/v1/data-sources"),
 };
 
 export { ApiError };

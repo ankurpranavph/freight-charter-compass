@@ -661,3 +661,78 @@ tbody tr:last-child td {
 .option-checks li {
   margin-bottom: 0.15rem;
 }
+
+/* ---------------------------------------------------------------------
+   Data Sources & Assumptions page
+   ------------------------------------------------------------------- */
+
+.classification-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.classification-badge-REAL {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.classification-badge-CALCULATED {
+  background: rgba(42, 120, 214, 0.14);
+  color: #1a548f;
+}
+
+.classification-badge-ASSUMPTION {
+  background: rgba(237, 161, 0, 0.16);
+  color: #8a5c00;
+}
+
+.classification-badge-SIMULATED {
+  background: rgba(107, 91, 149, 0.14);
+  color: #4f4171;
+}
+
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.source-entry {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.source-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.source-entry-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.source-entry-detail {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.source-entry-citation {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.source-entry-citation a {
+  color: var(--accent);
+}

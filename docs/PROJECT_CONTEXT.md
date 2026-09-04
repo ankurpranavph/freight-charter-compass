@@ -135,9 +135,14 @@ not created speculatively upfront.
   the forecast's 95% CI still contains today's real price (see
   DECISIONS.md #17). 404 for an unknown/empty commodity;
   `status: "insufficient_data"` if there isn't enough history loaded yet.
+- `GET /api/v1/data-sources` — the Data Sources & Assumptions page's own
+  catalog: every REAL/CALCULATED/SIMULATED/ASSUMPTION figure the app
+  uses, in 6 categories, read live from the same seeded rows and cited
+  constants the rest of the API already uses rather than a separate
+  hand-maintained list (DECISIONS.md #21).
 
-Planned next: `/api/v1/scenario/simulate`, `/api/v1/data-sources` (Phase
-2 / polish items — see TODO.md).
+Planned next: `/api/v1/scenario/simulate` (Phase 2 / polish item — see
+TODO.md).
 
 ## Data sources — real vs. calculated vs. simulated
 
@@ -255,9 +260,9 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   certain than it is. Deliberately kept separate from Module 6's risk
   score (market timing vs. vessel/route physical risk) — see
   DECISIONS.md #17. `GET /api/v1/decision/book-vs-wait/{commodity}`.
-- 72 passing pytest tests (10 API smoke + 7 ingestion-parser + 7
+- 81 passing pytest tests (11 API smoke + 7 ingestion-parser + 7
   forecast-engine + 11 compatibility-engine + 13 voyage-engine + 12
-  optimizer-engine + 12 book-or-wait).
+  optimizer-engine + 12 book-or-wait + 8 data-sources).
 
 - **Frontend shell built, all 3 MVP pages (Hour 17-23):** React + Vite,
   plain JavaScript (DECISIONS.md #18), `react-router-dom` 3-page shell.
@@ -273,10 +278,23 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   optimizer directly (`GET /api/v1/optimize/{port_id}`), rendered as
   ranked option cards with the Module 4 compatibility margins behind
   each risk premium one click away (DECISIONS.md #20). Backend gained a
-  scoped CORS policy (`localhost:5173` only) to allow all of this. The
-  Forecast and Recommendation pages are both verified in a sandbox
-  headless browser but still awaiting the user's own on-machine
-  confirmation before their commits land (DECISIONS.md #20).
+  scoped CORS policy (`localhost:5173` only) to allow all of this.
+
+- **Data Sources & Assumptions page built (the locked 5-page MVP is now
+  fully built):** a new `app/engine/data_sources.py` module +
+  `GET /api/v1/data-sources` endpoint that derive every entry from the
+  live database rows and existing cited constants (voyage.py's bunker
+  price / time-charter sources) rather than a parallel hand-maintained
+  catalog, so the page can never drift out of sync with the rest of the
+  app's sourcing (DECISIONS.md #21). Frontend page groups entries into
+  6 categories with a classification-badge legend
+  (REAL/CALCULATED/ASSUMPTION/SIMULATED) and a citation line (linked
+  when a source_url exists) per entry. 9 new tests (8 engine + 1 API
+  smoke), bringing the suite to 81 passing tests. Verified in a sandbox
+  headless browser; the whole 4-page frontend (Overview, Forecast,
+  Recommendation, Data Sources & Assumptions) is still awaiting the
+  user's own on-machine confirmation before the Data Sources commit
+  lands.
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and an

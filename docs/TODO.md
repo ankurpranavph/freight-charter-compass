@@ -36,16 +36,16 @@ scaffold, routing, API client, and all three pages (Overview, Forecast,
 Recommendation) are live against real data, verified in a sandbox
 headless browser, and confirmed by the user on their own machine.
 
-Of the locked 5-page MVP (DECISIONS.md #7: Overview, Freight Forecast,
-Vessel & Port Recommendation, Cost Optimization, Data Sources &
-Assumptions), the Recommendation page's ranked-by-risk-adjusted-cost
-option list already IS the cost-optimization view (Module 6's own
-output) -- so it fulfils both "Vessel & Port Recommendation" and "Cost
-Optimization" in one page rather than splitting the same ranking across
-two. That leaves one page to build to close out the locked 5-page scope:
-**Data Sources & Assumptions**, which needs a small new backend endpoint
-(`/api/v1/data-sources` doesn't exist yet) before the page can be built.
-Flagged to the user, not yet started.
+The locked 5-page MVP (DECISIONS.md #7) is now fully built: Overview,
+Freight Forecast, Vessel & Port Recommendation (which also fulfils "Cost
+Optimization" -- same Module 6 ranking, one page, not two -- see
+DECISIONS.md #20), and Data Sources & Assumptions (new
+`GET /api/v1/data-sources` endpoint + `/data-sources` page, reading
+sourcing live off the same seeded rows and cited constants every other
+page already uses rather than a separate hand-maintained list -- see
+DECISIONS.md #21). 81 passing tests (72 -> 81: 9 new for the data-sources
+endpoint). Verified in a sandbox headless browser; awaiting the user's
+own on-machine confirmation before the commit lands.
 
 INR currency display was discussed and deliberately deferred to later,
 after the MVP pages are confirmed working -- see DECISIONS.md #20.

@@ -4,6 +4,7 @@ const NAV_LINKS = [
   { to: "/", label: "Overview", end: true },
   { to: "/forecast", label: "Forecast" },
   { to: "/recommend", label: "Recommendation" },
+  { to: "/data-sources", label: "Data Sources" },
 ];
 
 export default function Layout() {
@@ -34,7 +35,7 @@ export default function Layout() {
       </main>
       <footer className="app-footer">
         Every figure on this site is labelled REAL, CALCULATED, SIMULATED,
-        or ASSUMPTION — see each page's sourcing notes.
+        or ASSUMPTION — see the Data Sources page for the full catalog.
       </footer>
     </div>
   );

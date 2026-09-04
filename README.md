@@ -19,13 +19,17 @@ they are: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 Backend is functionally complete for the MVP's decision-engine: real
 ingested commodity price history, a SARIMAX forecast model, a physical
 vessel/port compatibility gate, a voyage cost calculator, a risk-adjusted
-optimizer, and a book-now-vs-wait recommendation — 72 passing tests, all
-wired into the running API. The frontend (React + Vite) now has all 3 MVP
-pages built — Overview, Forecast (SARIMAX chart + decision card), and
-Recommendation (ranked vessel/route options) — all live against the real
-API and verified in a sandbox headless browser. The Forecast and
-Recommendation pages are still awaiting confirmation on the user's own
-machine before their commits land. See TODO.md for the exact punch list.
+optimizer, a book-now-vs-wait recommendation, and a Data Sources &
+Assumptions catalog — 81 passing tests, all wired into the running API.
+The frontend (React + Vite) now has all 5 locked MVP pages built —
+Overview, Forecast (SARIMAX chart + decision card), Recommendation
+(ranked vessel/route options, which also covers Cost Optimization), and
+Data Sources & Assumptions (every REAL/CALCULATED/SIMULATED/ASSUMPTION
+figure the app uses, in one place) — all live against the real API and
+verified in a sandbox headless browser. The Data Sources & Assumptions
+page is still awaiting confirmation on the user's own machine before its
+commit lands. An INR secondary currency display is deliberately deferred
+until after that. See TODO.md for the exact punch list.
 
 ## Quick start (backend)
 

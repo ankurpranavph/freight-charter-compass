@@ -15,6 +15,7 @@ from app.db.connection import db_session
 from app.db.seed import run_seed
 from app.engine.book_or_wait import DEFAULT_DECISION_HORIZON, evaluate_book_or_wait
 from app.engine.compatibility import build_matrix, check_compatibility
+from app.engine.data_sources import build_data_sources
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 from app.engine.optimizer import rank_options
 from app.engine.voyage import calculate_voyage
@@ -247,3 +248,14 @@ def book_or_wait(
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return result.as_dict()
+
+
+@app.get("/api/v1/data-sources")
+def data_sources():
+    """Data Sources & Assumptions page backing: every REAL/CALCULATED/
+    SIMULATED/ASSUMPTION figure in the app, in one catalog, read live from
+    the same seeded rows and cited constants the rest of the API already
+    uses (never a separately hand-maintained duplicate) -- see
+    app/engine/data_sources.py."""
+    with db_session() as conn:
+        return build_data_sources(conn)

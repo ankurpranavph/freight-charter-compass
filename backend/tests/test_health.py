@@ -113,3 +113,12 @@ def test_forecast_insufficient_data_with_starter_snapshot(client):
         # loaded and this legitimately returns a real forecast instead.
         assert body["status"] == "ok"
         assert len(body["forecast"]) > 0
+
+
+def test_data_sources_endpoint(client):
+    r = client.get("/api/v1/data-sources")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["categories"]) == 6
+    all_labels = [e["label"] for cat in body["categories"] for e in cat["entries"]]
+    assert any("Vizag" in l or "Visakhapatnam" in l for l in all_labels)

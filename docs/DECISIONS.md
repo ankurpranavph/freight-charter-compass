@@ -638,3 +638,72 @@ use. This bridge's build check is a convenience for catching real code
 bugs before pushing, not the source of truth for whether the app runs;
 the user's own browser against their own `npm run dev` is that source of
 truth, same as it's been since DECISIONS.md #18.
+
+## 21. Data Sources & Assumptions page reads the database live — never a separate hand-maintained catalog
+
+The 5th and final page of the locked 5-page MVP (DECISIONS.md #7). New
+backend endpoint `GET /api/v1/data-sources`, built by
+`app/engine/data_sources.py`, and a matching frontend page at
+`/data-sources`.
+
+**Deliberately not a hand-written list.** ports.json, vessels.json, and
+origin_ports.json already carry `source` / `source_url` / `source_date`
+on every row (from Module 2/3), and the World Bank ingestion already
+writes `source` / `source_url` onto every `commodity_price_history` row
+(Module 2, see DECISIONS.md #12). `build_data_sources()` reads those same
+rows straight out of the live database, plus the same cited constants
+Module 5 already uses for bunker price and time-charter rates
+(`BUNKER_PRICE_SOURCE`, `TIME_CHARTER_SOURCE` in `app/engine/voyage.py`).
+There is exactly one place each of these figures is typed in anywhere in
+the codebase — this page cannot silently drift out of sync with what the
+API is actually using, because it isn't a second copy of the citations,
+it's the same rows and constants read back out.
+
+**Six categories, and the classification is never asserted, it's
+derived:** commodity prices (REAL, with row counts and date ranges
+pulled live from the database, not hardcoded); East Coast India ports
+(REAL when `verified: true`, ASSUMPTION otherwise — the classification
+literally reads the same `verified` column the Overview page's badge
+already uses, so the two can never disagree); overseas loading ports
+(REAL, coordinates); vessel class specifications (ASSUMPTION, one entry
+per class from `vessel_classes`); voyage cost inputs (ASSUMPTION —
+bunker price and time-charter rates, cited and dated, not live feeds);
+and calculated methodology (five CALCULATED entries — voyage distance,
+the SARIMAX forecast, the compatibility engine, the risk-adjusted
+optimizer, and book-now-vs-wait — each a short note on what's computed
+from what, deliberately carrying no `source_url`, since attaching a URL
+to arithmetic would misleadingly imply an external citation that doesn't
+exist).
+
+**Caught by the test suite, not by inspection:** while building this,
+running it against my own sandbox database surfaced 4 commodity-price
+entries instead of 2 — turned out to be leftover rows from an earlier
+ad hoc synthetic dataset I'd loaded into that sandbox DB during Forecast
+chart testing (deleted from the repo, per DECISIONS.md #19, but the
+already-seeded rows sat in that one sandbox's `freight.db`, which
+`INSERT OR REPLACE`-based seeding never clears). Confirmed this was a
+sandbox-only artifact (the real device's `freight.db` was never touched
+by that script) by wiping the sandbox DB and re-seeding clean, which
+produced exactly the 2 expected entries. Documented here rather than
+silently fixed, since it's a genuine reminder that `INSERT OR REPLACE`
+seeding is additive, not a migration — a row whose primary key is no
+longer in the seed source stays in the database forever unless something
+explicitly deletes it. Not a problem for this hackathon's scope (nobody
+is removing seed rows), but worth knowing if the seed data ever shrinks.
+
+**Also fixed:** a copy-paste transcription bug caught by hashing every
+file after pushing it to the device this round (`"ASSUMPTISN"` instead
+of `"ASSUMPTION"` on one line of `data_sources.py`) — every file pushed
+in this session's block was verified with `sha256sum` against the
+sandbox original after writing, and this one didn't match on the first
+try. Fixed in place and reverified. A reminder that byte-for-byte
+verification after a manual device-bridge file push is worth doing, not
+just eyeballing the diff.
+
+Test coverage: 8 new tests in `backend/tests/test_data_sources.py`
+(shape of the response, every entry has a valid classification, ports'
+classification never disagrees with their own `verified` flag, vessel
+classes and voyage inputs are correctly ASSUMPTION, methodology entries
+are correctly CALCULATED with no `source_url`) plus 1 new API smoke test
+in `test_health.py`. 81 passing tests total (up from 72 before this
+session's frontend work started).
