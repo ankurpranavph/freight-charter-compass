@@ -1,20 +1,20 @@
 """
-Tests for app/engine/compatibility.py (Module 4 -- the physical gate).
+Tests for app/engine/compatibility.py (Module 4 — the physical gate).
 
 Two layers:
 - Unit tests against synthetic vessel/port dicts, covering full pass, a
   single-dimension failure, a missing-data ("unknown") dimension, and a
   non-coal-handling port.
-- API tests against the REAL seeded vessel/port data (cheap -- this is
+- API tests against the REAL seeded vessel/port data (cheap — this is
   pure arithmetic, no model fitting, so there's no reason to fake it).
   The real numbers produce a genuine, demo-worthy finding: Capesize
   (draft 18.0m, LOA 292m) is the only vessel class that doesn't fit
   everywhere. It clears Visakhapatnam (18.1m draft, 300m LOA) with room
   to spare, but fails at Paradip on BOTH draft (17.1m max, 0.9m short)
-  and LOA (290m max, 2m over), and fails at Dhamra on LOA alone -- Dhamra's
+  and LOA (290m max, 2m over), and fails at Dhamra on LOA alone — Dhamra's
   max draft is exactly 18.0m, an exact-limit boundary case that correctly
   counts as fitting (margin 0), not failing. These numbers were verified
-  against ports.json/vessels.json by running the test, not by hand-math --
+  against ports.json/vessels.json by running the test, not by hand-math —
   an initial hand-calculated assertion here was itself wrong (missed that
   Paradip's draft also fails), which is exactly the kind of mistake this
   test suite exists to catch.
@@ -113,10 +113,17 @@ def test_matrix_endpoint_real_data(client):
     r = client.get("/api/v1/compatibility/matrix")
     assert r.status_code == 200
     matrix = r.json()
-    assert len(matrix) == 12  # 4 vessel classes x 3 ports
+    assert len(matrix) == 24  # 4 vessel classes x 6 ports (ports 4-6 added Hour 27-29)
 
     failures = {(m["vessel_type"], m["port_id"]): m for m in matrix if not m["compatible"]}
-    assert set(failures) == {("Capesize", "PARADIP"), ("Capesize", "DHAMRA")}
+    assert set(failures) == {
+        ("Capesize", "PARADIP"),
+        ("Capesize", "DHAMRA"),
+        ("Handysize", "HALDIA"),
+        ("Supramax", "HALDIA"),
+        ("Panamax", "HALDIA"),
+        ("Capesize", "HALDIA"),
+    }
 
     # Paradip: Capesize fails on BOTH draft (17.1m max vs 18.0m vessel) and
     # LOA (290m max vs 292m vessel).
@@ -125,11 +132,38 @@ def test_matrix_endpoint_real_data(client):
     assert "loa" in paradip_reasons
     assert len(failures[("Capesize", "PARADIP")]["reasons"]) == 2
 
-    # Dhamra: max draft is exactly 18.0m (Capesize's draft) -- an exact
+    # Dhamra: max draft is exactly 18.0m (Capesize's draft) — an exact
     # boundary that counts as fitting, so only LOA fails here.
     dhamra_reasons = failures[("Capesize", "DHAMRA")]["reasons"]
     assert len(dhamra_reasons) == 1
     assert "loa" in dhamra_reasons[0].lower()
+
+    # Gangavaram: max draft is ALSO exactly 18.0m (same boundary case as
+    # Dhamra), but its LOA/beam are generous enough that Capesize clears on
+    # every dimension -- a real, razor-thin (0.0m) draft margin, not a
+    # failure. See test_optimizer.py for the resulting max risk penalty.
+    assert ("Capesize", "GANGAVARAM") not in failures
+
+    # Haldia: a real, verified, coal-handling port whose tidal channel tops
+    # out at 9.1m draft -- below every modeled vessel class. Handysize fails
+    # on draft alone (10.0m vs 9.1m, 0.9m over); Supramax and Panamax fail on
+    # BOTH draft and beam (32.3m vessel beam vs Haldia's 32.26m max -- a
+    # 0.04m real-world near-miss); Capesize fails on all three dimensions.
+    handysize_reasons = failures[("Handysize", "HALDIA")]["reasons"]
+    assert len(handysize_reasons) == 1
+    assert "draft" in handysize_reasons[0].lower()
+
+    for vessel_type in ("Supramax", "Panamax"):
+        reasons = " ".join(failures[(vessel_type, "HALDIA")]["reasons"]).lower()
+        assert "draft" in reasons
+        assert "beam" in reasons
+        assert len(failures[(vessel_type, "HALDIA")]["reasons"]) == 2
+
+    capesize_haldia_reasons = " ".join(failures[("Capesize", "HALDIA")]["reasons"]).lower()
+    assert "draft" in capesize_haldia_reasons
+    assert "loa" in capesize_haldia_reasons
+    assert "beam" in capesize_haldia_reasons
+    assert len(failures[("Capesize", "HALDIA")]["reasons"]) == 3
 
 
 def test_check_endpoint_real_compatible_pair(client):
@@ -145,7 +179,7 @@ def test_check_endpoint_real_incompatible_pair(client):
     assert r.status_code == 200
     body = r.json()
     assert body["compatible"] is False
-    # fails on both draft and LOA at Paradip -- see module docstring above
+    # fails on both draft and LOA at Paradip — see module docstring above
     assert len(body["reasons"]) == 2
     reasons_lower = " ".join(body["reasons"]).lower()
     assert "draft" in reasons_lower

@@ -707,3 +707,114 @@ classes and voyage inputs are correctly ASSUMPTION, methodology entries
 are correctly CALCULATED with no `source_url`) plus 1 new API smoke test
 in `test_health.py`. 81 passing tests total (up from 72 before this
 session's frontend work started).
+
+## 22. Ports 4-6 (Gangavaram, Krishnapatnam, Haldia) — real, sourced, and a genuine zero-compatibility finding at Haldia
+
+At the Hour 27-29 checkpoint (DECISIONS.md #5's original build order), on
+schedule, so per the plan this was the point to add the remaining 3 East
+Coast ports rather than jump straight to polish. Confirmed with the user
+before starting (AskUserQuestion, offered alongside the deferred INR
+display and Indian port traffic history) — chose ports 4-6.
+
+**Why this was cheap:** the compatibility engine (`app/engine/compatibility.py`),
+optimizer (`app/engine/optimizer.py`), and Data Sources catalog
+(`app/engine/data_sources.py`) are all fully data-driven off the `ports`
+table — none of them hardcode a port list or count. Adding 3 rows to
+`app/data/ports.json` was the entire code change; the frontend (Overview's
+port table, the Recommendation page's port picker, the Data Sources page)
+needed zero changes, confirmed by grepping for hardcoded port IDs/counts
+across `frontend/src` before starting (none found) and by a headless-browser
+pass afterward (all 6 ports render correctly everywhere, zero console
+errors).
+
+**Research, done before writing any code** (per this project's research-first
+discipline): each port's draft/LOA/beam and coal-handling capability was
+looked up from named, dated sources rather than assumed.
+
+- **Gangavaram Port** (17.6215°N, 83.2298°E): 18.0m draft, 292m LOA at
+  coal-priority Berth 5 / 300m at Berth 6, sourced from Adani Gangavaram's
+  own 2022-23 Berthing Policy & Tariff Structure document — an official
+  tariff filing, the single strongest source of any port in this dataset
+  (stronger than Vizag/Paradip/Dhamra's mix of authority PDFs and press).
+  Beam (48m) is not published there — an engineering inference for the
+  port's own stated "fully laden Capesize up to 200,000 DWT" capability,
+  flagged as such, same inference style already used for Paradip/Dhamra's
+  LOA/beam. Two mechanized coal berths, 20 MTPA combined coal capacity,
+  64 MTPA total (Wikipedia, FY2021-22).
+- **Krishnapatnam Port** (14.2508°N, 80.1313°E): 18.5m current operational
+  draft (Global Energy Monitor, 2023 figures), corroborated by an
+  independent 2012 Dredging Today record of the port reaching 18.0m —
+  two sources agreeing within 0.5m over an 11-year gap is a reasonable
+  confirmation. One of only 3 Indian ports (with Mundra and Gangavaram)
+  equipped for Capesize; 41 million tonnes of coal handled in 2018-19 is
+  real audited throughput, not a capacity claim. LOA/beam (300m/48m) are
+  the same engineering inference as Gangavaram's, flagged as such.
+- **Haldia Dock Complex** (22.0667°N, 88.0698°E): the genuinely interesting
+  result of this module. A real, verified, coal-handling port (confirmed:
+  a floating terminal with a coal-specific hopper/conveyor) — but its
+  approach channel is shallow and tidal-dependent: 9.1m is the *maximum*
+  tidal-supported draft (Wikipedia, citing Kolkata Port Trust figures);
+  the average channel draft is only 8.2-8.6m. LOA 240m / beam 32.26m come
+  from a shipping agent's Haldia general-info reference, specifically for
+  Berths 2, 3 & 4A (4A is Haldia's dedicated coal berth) — the most
+  precise LOA/beam sourcing of any port in this dataset, better than the
+  inferred figures used at Gangavaram/Krishnapatnam or even Paradip/Dhamra.
+
+**The Haldia result, run for real through the actual engine (not
+hand-waved):** every one of the 4 modeled vessel classes fails Haldia's
+draft. Handysize (10.0m draft) fails by 0.9m — the narrowest margin of any
+failure in this dataset. Supramax and Panamax fail on draft *and* beam:
+their 32.3m beam exceeds Haldia's 32.26m max by exactly 0.04m, a real
+near-miss between two independently-sourced numbers, not a rounding
+artifact — left as-is rather than fudged to make it pass. Capesize fails on
+all three dimensions, unsurprising given the size gap. `GET
+/api/v1/optimize/HALDIA` therefore returns `[]` — confirmed this doesn't
+404 or crash (the port itself is real; the endpoint's contract is "no
+compatible options" is a valid 200 response, per the existing
+`main.py`/`optimizer.py` design), and confirmed in the browser that the
+Recommendation page's existing empty-state message ("No vessel class
+physically clears this port…") renders correctly with zero frontend code
+changes — that message was already written generically when the
+Recommendation page shipped (DECISIONS.md #20), before Haldia's result was
+even known.
+
+This is a real, documented limitation, not a bug: Haldia's actual real-world
+traffic is "mainly fully loaded Handysize carriers of 28,000-40,000 DWT" at
+real-world drafts below our assumed representative 10.0m figure, plus
+Panamax vessels accepted at only 40-50% of capacity (partial loading).
+This app's compatibility engine only models full-DWT vessels — partial
+loading / part-cargo voyages are explicitly out of scope (see
+`docs/TODO.md`'s known-limitations list) — so a port whose real practice
+depends on partial loading will legitimately show as fully incompatible
+here. Worth revisiting if partial-loading ever gets modeled, but not before
+then; not fudging Haldia's numbers to force a false "compatible" result
+just to avoid an empty page.
+
+**Gangavaram's own notable finding:** its draft limit (18.0m) exactly
+equals Capesize's own draft (18.0m) — an exact 0.0m boundary, same shape as
+Dhamra's existing exact-boundary case (DECISIONS.md #16), but here Capesize
+clears every other dimension too, so it's ranked, not excluded. The
+optimizer's risk engine correctly assigns it the maximum 15% risk penalty
+(`tightest_margin_ratio_pct == 0.0`) — same mechanics already proven and
+tested at Vizag, now confirmed at a second port from real data rather than
+synthetic test fixtures.
+
+Test coverage: 3 new per-port `verified`/draft checks in `test_health.py`
+(`test_gangavaram_verified`, `test_krishnapatnam_verified`,
+`test_haldia_verified_but_shallow` — the last explicitly asserts
+`coal_handling` stays `true` even though Haldia excludes every vessel
+class, since the flag describes the port's real activity, not our
+engine's compatibility verdict); the compatibility matrix test extended
+from 12 to 24 combinations with the full Haldia failure-reason set
+asserted per vessel class; 3 new optimizer tests
+(`test_optimize_gangavaram_max_risk_penalty_at_exact_boundary`,
+`test_optimize_krishnapatnam_all_compatible`,
+`test_optimize_haldia_returns_no_options`); the Data Sources destination-port
+count updated from 3 to 6. **87 passing tests total** (up from 81).
+
+Pushed to the device via `SendUserFile` + `device_commit_files` this round
+instead of the manual base64-heredoc reconstruction used earlier in the
+session — all 5 changed files matched byte-for-byte on the first
+`sha256sum` check, no transcription errors this time. Worth preferring
+this path going forward: it removes the manual-reconstruction step
+entirely rather than just verifying after the fact.

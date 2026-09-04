@@ -46,7 +46,7 @@ def test_ports_reflect_their_own_verified_flag():
     cat = next(
         c for c in payload["categories"] if c["category"] == "East Coast India ports (destination)"
     )
-    assert len(cat["entries"]) == 3
+    assert len(cat["entries"]) == 6
     for entry in cat["entries"]:
         # A verified port must be labelled REAL, not ASSUMPTION — the two
         # must never disagree, since `verified` is what the Overview page's

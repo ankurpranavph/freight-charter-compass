@@ -32,18 +32,21 @@ punch list; it should always reflect reality, not the original plan.
 ## Current task
 
 The locked 5-page MVP (DECISIONS.md #7) is fully built, confirmed by the
-user on their own machine, and committed (10-data-sources-page):
-Overview, Freight Forecast, Vessel & Port Recommendation (which also
-fulfils "Cost Optimization" -- same Module 6 ranking, one page, not two
--- see DECISIONS.md #20), and Data Sources & Assumptions (new
-`GET /api/v1/data-sources` endpoint + `/data-sources` page -- see
-DECISIONS.md #21). 81 passing tests, all wired into the running API.
+user on their own machine, and committed (10-data-sources-page).
 
-At the Hour 27-29 checkpoint from the original build order: on schedule
-to add ports 4-6 (Gangavaram, Krishnapatnam, Haldia) and start Phase 2.
+At the Hour 27-29 checkpoint, the user chose ports 4-6 over the deferred
+INR display. Gangavaram, Krishnapatnam, and Haldia are now real, sourced
+rows in `ports.json` -- zero new code, since the compatibility/optimizer/
+data-sources engines are fully data-driven (see DECISIONS.md #22 for the
+full sourcing and the genuine Haldia zero-compatibility finding: a real,
+verified, coal-handling port whose 9.1m tidal draft excludes every
+modeled vessel class). 87 passing tests, all wired into the running API,
+verified in a sandbox headless browser. Awaiting the user's own
+on-machine confirmation before this commit lands.
+
 The deliberately-deferred INR secondary currency display (DECISIONS.md
-#20) is also still open. Which one to build next has been put to the
-user rather than assumed -- see the question raised in chat.
+#20) and Indian port traffic history are still open -- next module choice
+to be put to the user again once this one is confirmed.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
@@ -174,10 +177,9 @@ user rather than assumed -- see the question raised in chat.
       fulfilled by the Recommendation page (DECISIONS.md #20); Data
       Sources & Assumptions page shipped in 10-data-sources-page
       (DECISIONS.md #21).
-- [ ] **Checkpoint (Hour 27–29):** if on schedule, add ports 4–6
-      (Gangavaram, Krishnapatnam, Haldia) and start Phase 2. If behind,
-      skip straight to polish. -- On schedule; next module choice (ports
-      4-6 vs. the deferred INR display) put to the user.
+- [x] **Checkpoint (Hour 27–29), done:** on schedule; ports 4-6
+      (Gangavaram, Krishnapatnam, Haldia) added as real, sourced rows --
+      see DECISIONS.md #22. Now 6 East Coast ports total.
 - [ ] **Phase 2 / Polish (Hour 29–33)**
 - [ ] **Demo readiness (Hour 33–36):** rehearse the demo script twice,
       freeze the build.

@@ -39,9 +39,9 @@ def test_ports_seeded(client):
     r = client.get("/api/v1/ports")
     assert r.status_code == 200
     body = r.json()
-    assert len(body) == 3
+    assert len(body) == 6
     ids = {p["port_id"] for p in body}
-    assert ids == {"VIZAG", "PARADIP", "DHAMRA"}
+    assert ids == {"VIZAG", "PARADIP", "DHAMRA", "GANGAVARAM", "KRISHNAPATNAM", "HALDIA"}
 
 
 def test_vizag_confirmed_draft(client):
@@ -62,6 +62,35 @@ def test_paradip_now_verified(client):
     assert port["max_draft_m"] == 17.1
 
 
+def test_gangavaram_verified(client):
+    # Added at the Hour 27-29 checkpoint (ports 4-6). Draft sourced from
+    # Adani Gangavaram's own Berthing Policy & Tariff Structure document.
+    r = client.get("/api/v1/ports/GANGAVARAM")
+    port = r.json()
+    assert port["verified"] == 1
+    assert port["max_draft_m"] == 18.0
+
+
+def test_krishnapatnam_verified(client):
+    r = client.get("/api/v1/ports/KRISHNAPATNAM")
+    port = r.json()
+    assert port["verified"] == 1
+    assert port["max_draft_m"] == 18.5
+
+
+def test_haldia_verified_but_shallow(client):
+    # Haldia is a real, verified, coal-handling port -- but its tidal channel
+    # tops out at 9.1m draft, below even the smallest modeled vessel class
+    # (Handysize, 10.0m). coal_handling stays true (it genuinely does handle
+    # coal); the draft limit is what excludes every class here, not a
+    # mislabeled flag. See test_compatibility.py for the resulting matrix.
+    r = client.get("/api/v1/ports/HALDIA")
+    port = r.json()
+    assert port["verified"] == 1
+    assert port["coal_handling"] == 1
+    assert port["max_draft_m"] == 9.1
+
+
 def test_unknown_port_404(client):
     r = client.get("/api/v1/ports/NOPE")
     assert r.status_code == 404
@@ -70,7 +99,7 @@ def test_unknown_port_404(client):
 def test_commodity_prices_seeded(client):
     # Whether this seeds the 6-row starter snapshot or the full ~1480-row
     # World Bank history depends on whether data_pipeline/processed/
-    # commodity_prices_worldbank.csv exists locally (it's gitignored --
+    # commodity_prices_worldbank.csv exists locally (it's gitignored —
     # present once you've run ingest_worldbank.py for real, absent on a
     # fresh clone) -- seed.py prefers it when present, per its docstring.
     # Both are correct outcomes; assert the invariant that holds either

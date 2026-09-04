@@ -157,3 +157,52 @@ def test_optimize_paradip_excludes_capesize_entirely(client):
 def test_optimize_unknown_port_404(client):
     r = client.get("/api/v1/optimize/NOPE")
     assert r.status_code == 404
+
+
+def test_optimize_gangavaram_max_risk_penalty_at_exact_boundary(client):
+    # Gangavaram's coal berths cap out at exactly 18.0m draft -- the same
+    # figure as the Capesize class's own draft, an exact 0.0m margin (see
+    # test_compatibility.py). All 4 vessel classes still clear every
+    # dimension, so all 12 combinations are ranked, but Capesize's
+    # razor-thin draft margin should earn it the optimizer's MAX risk
+    # penalty (15%), same mechanics as Vizag's own near-zero-margin case.
+    r = client.get("/api/v1/optimize/GANGAVARAM")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 12  # 4 vessels x 3 origins, all compatible
+
+    capesize_options = [o for o in body if o["vessel_type"] == "Capesize"]
+    assert len(capesize_options) == 3
+    for opt in capesize_options:
+        assert opt["tightest_margin_ratio_pct"] == 0.0
+        assert opt["risk_multiplier"] == 1.15  # 1.0 + MAX_RISK_PENALTY at 0 margin
+
+
+def test_optimize_krishnapatnam_all_compatible(client):
+    # Krishnapatnam clears Capesize on every dimension (18.5m draft vs 18.0m
+    # vessel, 300m LOA vs 292m, 48m beam vs 45m) -- real margins on all
+    # three, tightest is LOA at ~2.7% (300-292=8m spare / 292m vessel), still
+    # under the optimizer's 10% safe-margin threshold so it still carries a
+    # real, non-maximum risk penalty, unlike Gangavaram's exact-boundary
+    # (0.0m draft margin) case which hits the max.
+    r = client.get("/api/v1/optimize/KRISHNAPATNAM")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 12  # 4 vessels x 3 origins, all compatible
+
+    capesize_options = [o for o in body if o["vessel_type"] == "Capesize"]
+    assert len(capesize_options) == 3
+    for opt in capesize_options:
+        assert 0.0 < opt["tightest_margin_ratio_pct"] < 10.0
+        assert 1.0 < opt["risk_multiplier"] < 1.15
+
+
+def test_optimize_haldia_returns_no_options(client):
+    # Haldia's 9.1m tidal-channel draft excludes every one of the 4 modeled
+    # vessel classes (see test_compatibility.py) -- the first real,
+    # verified port in this dataset where the optimizer legitimately has
+    # nothing to rank. A real finding, not a bug: 200 with an empty list,
+    # never a 404 (the port itself is real and known) or a crash.
+    r = client.get("/api/v1/optimize/HALDIA")
+    assert r.status_code == 200
+    assert r.json() == []

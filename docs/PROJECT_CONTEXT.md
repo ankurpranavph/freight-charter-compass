@@ -116,7 +116,8 @@ not created speculatively upfront.
   (physical gate): draft/LOA/beam + coal-handling check, with the exact
   rejection reason(s). 404 for an unknown vessel_type or port_id.
 - `GET /api/v1/compatibility/matrix` — every vessel class x every seeded
-  port (currently 12 combinations), same format.
+  port (currently 24 combinations: 4 vessel classes x 6 ports, since
+  ports 4-6 were added — see below), same format.
 - `GET /api/v1/origin-ports` — the 3 fixed overseas coal-loading ports
   (Australia/South Africa/Indonesia).
 - `GET /api/v1/voyage/calculate?vessel_type=&origin_id=&port_id=&cargo_tonnes=`
@@ -290,17 +291,48 @@ SAIL's actual cargo/contract volumes (illustrative scenarios only).
   6 categories with a classification-badge legend
   (REAL/CALCULATED/ASSUMPTION/SIMULATED) and a citation line (linked
   when a source_url exists) per entry. 9 new tests (8 engine + 1 API
-  smoke), bringing the suite to 81 passing tests. Verified in a sandbox
-  headless browser; the whole 4-page frontend (Overview, Forecast,
-  Recommendation, Data Sources & Assumptions) is still awaiting the
-  user's own on-machine confirmation before the Data Sources commit
-  lands.
+  smoke), bringing the suite to 81 passing tests at the time. Verified
+  in a sandbox headless browser and confirmed by the user on their own
+  machine — the locked 5-page MVP (commit `10-data-sources-page`) is
+  fully built and confirmed.
+
+- **Ports 4-6 added (Hour 27-29 checkpoint):** Gangavaram, Krishnapatnam,
+  and Haldia researched and seeded as real, verified, sourced rows —
+  same `ports.json`/`schema.sql` shape as the first 3, no new code
+  (the compatibility/optimizer/data-sources engines are fully
+  data-driven, exactly as planned). Real, cited figures: Gangavaram
+  18.0m draft / 292-300m LOA (Adani's own 2022-23 Berthing Policy &
+  Tariff Structure — an official coal-berth tariff document, the
+  strongest single source in this dataset), Krishnapatnam 18.5m draft
+  (Global Energy Monitor, corroborated by a 2012 Dredging Today
+  completion record), both inferred at 48m beam (not independently
+  sourced, flagged as such) and both Capesize-capable. Haldia Dock
+  Complex is the standout real finding: a genuine, verified,
+  coal-handling port whose shallow tidal channel (9.1m max draft, LOA
+  240m / beam 32.26m from Berths 2/3/4A's own published limits) is
+  narrower than every one of the 4 modeled vessel classes at full DWT —
+  Handysize fails on draft alone (0.9m over), Supramax and Panamax fail
+  on draft AND beam (32.3m vessel beam vs. Haldia's 32.26m max — a real
+  0.04m near-miss), Capesize fails on all three dimensions. `GET
+  /api/v1/optimize/HALDIA` now legitimately returns `[]` — the first
+  real port in this dataset with zero compatible options, a genuine
+  finding (Haldia's real-world traffic is mostly partial-loaded
+  Handysize/Panamax, a scope this app doesn't model — see
+  DECISIONS.md #22) not a bug. Gangavaram is also notable: its 18.0m
+  draft exactly equals Capesize's own draft, an exact-boundary pass
+  (0.0m margin) that earns the optimizer's maximum 15% risk penalty,
+  the same mechanics already proven at Vizag. 6 new tests (3 per-port
+  `verified` checks + 3 optimizer real-data tests covering the exact
+  boundary, the all-compatible case, and the zero-result case) plus the
+  existing matrix/ports/data-sources tests updated for 6 ports —
+  **87 passing tests total.** Verified in a sandbox headless browser;
+  awaiting the user's own on-machine confirmation before this commit
+  lands. See DECISIONS.md #22.
 
 **Not yet built:** FRED/RBA ingestion (deprioritized — World Bank alone
 covers the two series we need), Indian port traffic history, and an
-INR secondary currency display (deliberately deferred to after the MVP
-pages are confirmed — DECISIONS.md #20) — see TODO.md for exact next
-steps.
+INR secondary currency display (deliberately deferred — DECISIONS.md
+#20) — see TODO.md for exact next steps.
 
 ## Important assumptions
 
