@@ -34,19 +34,16 @@ punch list; it should always reflect reality, not the original plan.
 The locked 5-page MVP (DECISIONS.md #7) is fully built, confirmed by the
 user on their own machine, and committed (10-data-sources-page).
 
-At the Hour 27-29 checkpoint, the user chose ports 4-6 over the deferred
-INR display. Gangavaram, Krishnapatnam, and Haldia are now real, sourced
-rows in `ports.json` -- zero new code, since the compatibility/optimizer/
-data-sources engines are fully data-driven (see DECISIONS.md #22 for the
-full sourcing and the genuine Haldia zero-compatibility finding: a real,
-verified, coal-handling port whose 9.1m tidal draft excludes every
-modeled vessel class). 87 passing tests, all wired into the running API,
-verified in a sandbox headless browser. Awaiting the user's own
-on-machine confirmation before this commit lands.
+Ports 4-6 (Gangavaram, Krishnapatnam, Haldia) are also confirmed and
+committed (11-ports-4-6, the Hour 27-29 checkpoint) -- 6 East Coast ports
+total, 87 passing tests. See DECISIONS.md #22 for the full sourcing and
+the genuine Haldia zero-compatibility finding (a real, verified,
+coal-handling port whose 9.1m tidal draft excludes every modeled vessel
+class -- confirmed correct, not a bug, on the user's own machine).
 
-The deliberately-deferred INR secondary currency display (DECISIONS.md
-#20) and Indian port traffic history are still open -- next module choice
-to be put to the user again once this one is confirmed.
+Next module choice -- the deliberately-deferred INR secondary currency
+display (DECISIONS.md #20) or Indian port traffic history -- still to be
+put to the user.
 
 ## Remaining (in build order — see PROJECT_CONTEXT.md roadmap)
 
