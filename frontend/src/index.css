@@ -795,3 +795,86 @@ tbody tr:last-child td {
 .source-entry-citation a {
   color: var(--accent);
 }
+
+/* ---------------------------------------------------------------------
+   Recommendation page — interactive route map (DECISIONS.md #30)
+   ------------------------------------------------------------------- */
+
+.route-map-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.route-map {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.route-map .leaflet-container {
+  background: #eef2f0;
+  font-family: var(--sans);
+}
+
+.route-map-caption {
+  margin-top: 0.5rem;
+}
+
+/* ---------------------------------------------------------------------
+   InfoNote — collapsed-by-default disclosure for methodology/sourcing
+   copy (DECISIONS.md #31). Nothing lost, just tucked away.
+   ------------------------------------------------------------------- */
+
+.info-note {
+  margin: 0.35rem 0 1.1rem;
+}
+
+.info-note summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.info-note summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-note summary::before {
+  content: "ⓘ";
+  font-size: 0.9em;
+}
+
+.info-note summary:hover {
+  color: var(--text);
+}
+
+.info-note[open] summary {
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.info-note-body {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  max-width: 70ch;
+}
+
+.info-note-body p {
+  margin: 0 0 0.5rem;
+}
+
+.info-note-body p:last-child {
+  margin-bottom: 0;
+}
+
+.page > .info-note:first-of-type,
+.page-intro-note {
+  margin-top: -0.25rem;
+}

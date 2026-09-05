@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import ForecastChart from "../components/ForecastChart";
 import { useExchangeRate } from "../hooks/useExchangeRate";
 import { formatInr } from "../utils/currency";
+import InfoNote from "../components/InfoNote";
 
 const COMMODITIES = [
   { id: "coking_coal", label: "Coking coal (Australian, metallurgical)" },
@@ -113,11 +114,13 @@ function MetricsPanel({ evaluation, modelInfo }) {
   return (
     <div className="section">
       <h2>Model accuracy</h2>
-      <p className="section-note">
-        CALCULATED — SARIMAX vs. a seasonal-naive baseline, evaluated on the
-        last {holdout_months} real months held out of training (never seen
-        during fitting). Lower is better on every metric.
-      </p>
+      <InfoNote label="Methodology">
+        <p>
+          CALCULATED — SARIMAX vs. a seasonal-naive baseline, evaluated on the
+          last {holdout_months} real months held out of training (never seen
+          during fitting). Lower is better on every metric.
+        </p>
+      </InfoNote>
       <div className="table-wrap">
         <table>
           <thead>
@@ -145,12 +148,14 @@ function MetricsPanel({ evaluation, modelInfo }) {
         </table>
       </div>
       {modelInfo && (
-        <p className="section-note" style={{ marginTop: "0.6rem" }}>
-          Order {JSON.stringify(modelInfo.order)} × seasonal{" "}
-          {JSON.stringify(modelInfo.seasonal_order)}, AIC {modelInfo.aic}, trained
-          on {modelInfo.trained_on_months} months (
-          {modelInfo.data_range?.start} – {modelInfo.data_range?.end}).
-        </p>
+        <InfoNote label="Model parameters">
+          <p style={{ margin: 0 }}>
+            Order {JSON.stringify(modelInfo.order)} × seasonal{" "}
+            {JSON.stringify(modelInfo.seasonal_order)}, AIC {modelInfo.aic}, trained
+            on {modelInfo.trained_on_months} months (
+            {modelInfo.data_range?.start} – {modelInfo.data_range?.end}).
+          </p>
+        </InfoNote>
       )}
     </div>
   );
@@ -165,12 +170,14 @@ export default function Forecast() {
   return (
     <div className="page">
       <h1>Forecast</h1>
-      <p className="page-intro">
-        SARIMAX price forecast (Module 1) against a seasonal-naive baseline,
-        and the resulting book-now-vs-wait read (Module 7) — reusing this
-        same forecast, not a second model. See{" "}
-        <code>docs/DECISIONS.md #13, #17</code>.
-      </p>
+      <InfoNote label="What this page shows" className="page-intro-note">
+        <p>
+          SARIMAX price forecast (Module 1) against a seasonal-naive baseline,
+          and the resulting book-now-vs-wait read (Module 7) — reusing this
+          same forecast, not a second model. See{" "}
+          <code>docs/DECISIONS.md #13, #17</code>.
+        </p>
+      </InfoNote>
 
       <div className="filter-row">
         <div className="filter-group">

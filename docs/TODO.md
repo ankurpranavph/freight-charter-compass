@@ -87,21 +87,50 @@ both Recommendation modes' cost figures. Also added to the Data Sources
 catalog as its own category. 113 passing tests at the time. See
 DECISIONS.md #25.
 
-**Indian port traffic history, done, awaiting on-machine confirmation:**
-the last open item. shipmin.gov.in/data.gov.in/IPA are network-blocked
-the same way as thedocs.worldbank.org/rba.gov.au (DECISIONS.md #10),
-and extensive research found no freely-accessible monthly coal-traffic
-series for any of the 6 ports through any source -- surfaced to the
-user directly (three options) rather than fabricated or silently
-skipped; the user chose to seed the real one-off facts targeted
-research could find, clearly labelled. New `note` column on
-`port_traffic_history`, 6 real individually-sourced records (a 24-hour
-discharge record, a single shipment, or a berth record per port,
-spanning 2016-2026, explicitly not comparable to each other). New `GET
-/api/v1/port-traffic?port_id=`, an 8th Data Sources category, and a new
-Overview page section. 120 passing tests (up from 113). Verified in a
-sandbox headless browser; not yet confirmed on the user's own machine.
-See DECISIONS.md #26.
+**Indian port traffic history, confirmed and committed
+(`15-port-traffic-history`).** shipmin.gov.in/data.gov.in/IPA are
+network-blocked the same way as thedocs.worldbank.org/rba.gov.au
+(DECISIONS.md #10), and extensive research found no freely-accessible
+monthly coal-traffic series for any of the 6 ports through any source
+-- surfaced to the user directly (three options) rather than
+fabricated or silently skipped; the user chose to seed the real
+one-off facts targeted research could find, clearly labelled. New
+`note` column on `port_traffic_history`, 6 real individually-sourced
+records (a 24-hour discharge record, a single shipment, or a berth
+record per port, spanning 2016-2026, explicitly not comparable to each
+other). New `GET /api/v1/port-traffic?port_id=`, an 8th Data Sources
+category, and a new Overview page section. 120 passing tests (up from
+113). See DECISIONS.md #26.
+
+**Real deployment shipped (`16-deployment-config`, `17-real-price-
+history-checked-in`, `18-honest-insufficient-data-message`).** The app
+is live for outside testers: GitHub -> Render (backend) -> Vercel
+(frontend), auto-deploying on push. Along the way, fixed a real gap
+where the real World Bank price history CSV was gitignored and never
+reached a fresh deploy (now checked in with a narrow `.gitignore`
+exception, DECISIONS.md #28), and reworded the coking-coal
+`insufficient_data` message so it no longer leaks an internal script
+path to real testers while staying just as honest about the real month
+count (DECISIONS.md #29).
+
+**Interactive route map and the text-reduction / "more professional"
+pass, both done in sandbox, awaiting on-machine confirmation -- the
+current task.** Both Recommendation modes show a small interactive map
+(loading port, destination ports, and the route line between whichever
+pair is focused) drawn from the exact same real `ROUTE_WAYPOINTS` the
+voyage-cost calculation already uses, not an invented straight line --
+see DECISIONS.md #30. On top of that, every page intro and every
+sourcing/methodology note across all 4 pages is now collapsed by
+default behind a small reusable disclosure (`InfoNote`), matching the
+pattern the option cards already used for "Why this port/vessel
+works." Nothing cut -- everything is still there, one click away. The
+actual answers (book-now-vs-wait reasoning, insufficient_data notes,
+every Data Sources entry) were deliberately left always-visible -- see
+DECISIONS.md #31. 121 passing tests (up from 120; the text-reduction
+pass touched frontend copy/layout only, no new tests). Verified in a
+sandbox headless browser (build clean, all 4 pages screenshotted
+collapsed and fully expanded, zero real console errors); neither is
+yet confirmed on the user's own machine or committed.
 
 Still open after that: the real RBA coking-coal ingestion, which no one
 has run for real yet -- then Phase 2 polish / demo readiness.

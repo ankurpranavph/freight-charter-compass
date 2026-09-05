@@ -28,7 +28,7 @@ currency display alongside every USD figure a user reads a decision off
 (DECISIONS.md #25), 6 real individually-sourced port coal-handling
 records (DECISIONS.md #26), and a Data Sources & Assumptions catalog,
 covering 6 East Coast ports (Visakhapatnam, Paradip, Dhamra,
-Gangavaram, Krishnapatnam, Haldia) — 120 passing tests, all wired into
+Gangavaram, Krishnapatnam, Haldia) — 121 passing tests, all wired into
 the running API. The frontend (React + Vite) has all 5 locked MVP pages
 built — Overview, Forecast (SARIMAX chart + decision card),
 Recommendation (now genuinely interactive: pick your own vessel,
@@ -38,18 +38,24 @@ and Data Sources & Assumptions (every REAL/CALCULATED/SIMULATED/
 ASSUMPTION figure the app uses, in one place) — all live against the
 real API and verified in a sandbox headless browser, fully data-driven
 so ports 4-6 needed zero frontend changes (confirmed by the user,
-committed as `11-ports-4-6`). The coking-coal proxy fix
+committed as `11-ports-4-6`). The Recommendation page also now has an
+interactive route map in both modes, drawing the real port coordinates
+and the same route waypoints the voyage-cost calculation itself uses
+(DECISIONS.md #30). Every page's intro text and sourcing/methodology
+notes are collapsed by default behind a small "ⓘ" disclosure for a
+cleaner, less text-heavy look — nothing removed, just tucked away one
+click deep (DECISIONS.md #31). The coking-coal proxy fix
 (`12-coking-coal-proxy`), the cross-port recommendation module
 (`13-cross-port-recommendation`), and the INR currency display
 (`14-inr-currency-display`) are all confirmed and committed. The
 Indian port traffic history module (6 real, individually-sourced,
 individually-captioned one-off records — no freely-accessible monthly
-series exists for these ports, see DECISIONS.md #26) is built and
-verified in the sandbox, awaiting confirmation on the user's own
-machine. The real RBA coking-coal ingestion script hasn't been run by
-anyone against the real file yet (so the app honestly shows
-"insufficient data" for coking coal rather than faking a series). See
-TODO.md for the exact punch list.
+series exists for these ports, see DECISIONS.md #26) is confirmed and
+committed. The app is also now deployed for outside testers (GitHub ->
+Render -> Vercel — DECISIONS.md #27-29). The real RBA coking-coal
+ingestion script hasn't been run by anyone against the real file yet
+(so the app honestly shows "insufficient data" for coking coal rather
+than faking a series). See TODO.md for the exact punch list.
 
 ## Quick start (backend)
 

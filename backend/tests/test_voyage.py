@@ -1,5 +1,5 @@
 """
-Tests for app/engine/voyage.py (Module 5 -- Simulate).
+Tests for app/engine/voyage.py (Module 5 — Simulate).
 
 Three layers:
 - haversine_nm against a hand-checked distance (1 degree of longitude at
@@ -9,8 +9,8 @@ Three layers:
 - API tests against the real seeded vessel/origin/port data. The real
   distances were sanity-checked against typical trade-press figures for
   these actual routes before this module was written (Newcastle-India
-  ~6200nm, Richards Bay-India ~4300nm, Indonesia-India ~2900nm -- all
-  within the ranges commonly quoted for these routes) -- see
+  ~6200nm, Richards Bay-India ~4300nm, Indonesia-India ~2900nm — all
+  within the ranges commonly quoted for these routes) — see
   DECISIONS.md for the full writeup. Not re-asserted here since a
   statsmodels-style "shape and contract" check is more robust than
   pinning exact nm figures that would need updating if a waypoint is
@@ -94,11 +94,11 @@ def test_calculate_voyage_arithmetic_with_round_numbers():
         del voyage_mod.ROUTE_WAYPOINTS["SYNTHETIC"]
 
     # 10 degrees of latitude is ~600nm, not exactly 600nm on a spherical
-    # mean-radius haversine (~600.4nm) -- assert the arithmetic RELATIONSHIP
+    # mean-radius haversine (~600.4nm) — assert the arithmetic RELATIONSHIP
     # from the actual computed distance, not an idealized round number,
     # since a tight absolute tolerance here was itself a bug (an earlier
     # version of this test failed on that ~0.4nm rounding cascading into a
-    # ~$34 difference in charter hire -- a test-precision issue, not an
+    # ~$34 difference in charter hire — a test-precision issue, not an
     # engine bug).
     assert result.distance_nm == pytest.approx(600.0, abs=1.0)
     expected_days = result.distance_nm / (10.0 * 24)
@@ -158,6 +158,20 @@ def test_origin_ports_endpoint(client):
     assert len(body) == 3
     ids = {o["origin_id"] for o in body}
     assert ids == {"NEWCASTLE_AU", "RICHARDS_BAY_ZA", "TABONEO_ID"}
+
+
+def test_origin_ports_carry_the_same_route_waypoints_voyage_calc_uses(client):
+    # The frontend's route map (DECISIONS.md #30) draws this exact path —
+    # it must be the real ROUTE_WAYPOINTS list, not a re-derived or
+    # invented one, so the picture always matches route_distance_nm's own
+    # number.
+    r = client.get("/api/v1/origin-ports")
+    body = r.json()
+    by_id = {o["origin_id"]: o for o in body}
+    for origin_id, waypoints in ROUTE_WAYPOINTS.items():
+        got = by_id[origin_id]["route_waypoints"]
+        assert got == [list(point) for point in waypoints]
+        assert len(got) >= 2  # at least the origin itself and one open-ocean point
 
 
 def test_voyage_calculate_real_route(client):

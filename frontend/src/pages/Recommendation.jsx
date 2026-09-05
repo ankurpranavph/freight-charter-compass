@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useExchangeRate } from "../hooks/useExchangeRate";
 import { formatInr } from "../utils/currency";
+import RouteMap from "../components/RouteMap";
+import InfoNote from "../components/InfoNote";
 
 const HORIZONS = [3, 6, 12, 24];
 
@@ -127,20 +129,63 @@ function ByPortPanel({ ports, originPorts, fx }) {
   const [cargoInput, setCargoInput] = useState("");
   const cargoTonnes = cargoInput && Number(cargoInput) > 0 ? Number(cargoInput) : null;
   const { loading, error, data } = useByPortData(portId, cargoTonnes);
+  const [focusedOriginId, setFocusedOriginId] = useState(null);
+
+  const currentPort = ports.find((p) => p.port_id === portId);
 
   function originName(originId) {
     const match = originPorts.find((o) => o.origin_id === originId);
     return match ? match.name : originId;
   }
 
+  // One map point per overseas loading port, aggregated to its own best
+  // rank among the ranked options — a single origin can appear at several
+  // ranks (different vessel classes), so the map shows the best it can
+  // offer, not every combination (the cards below already do that).
+  const mapPoints = (data || []).length
+    ? originPorts.map((o) => {
+        const fromHere = data.filter((opt) => opt.origin_id === o.origin_id);
+        if (fromHere.length === 0) {
+          return {
+            id: o.origin_id,
+            lat: o.lat,
+            lon: o.lon,
+            name: o.name,
+            status: "incompatible",
+          };
+        }
+        const best = fromHere.reduce((a, b) => (a.rank < b.rank ? a : b));
+        return {
+          id: o.origin_id,
+          lat: o.lat,
+          lon: o.lon,
+          name: o.name,
+          status: best.rank === 1 ? "top" : "compatible",
+          routeWaypoints: o.route_waypoints,
+          tooltipDetail: `${best.vessel_type}, #${best.rank} overall · $${best.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t`,
+        };
+      })
+    : [];
+
+  useEffect(() => {
+    if (!data || data.length === 0) {
+      setFocusedOriginId(null);
+      return;
+    }
+    const top = data.find((opt) => opt.rank === 1);
+    setFocusedOriginId(top ? top.origin_id : data[0].origin_id);
+  }, [data]);
+
   return (
     <>
-      <p className="page-intro">
-        Every physically-compatible vessel × loading-port combination for the
-        chosen destination, ranked by risk-adjusted cost per tonne (Module 6)
-        — composing Module 4's compatibility gate and Module 5's voyage cost,
-        not a separate score. See <code>docs/DECISIONS.md #14, #16</code>.
-      </p>
+      <InfoNote label="What this view shows" className="page-intro-note">
+        <p>
+          Every physically-compatible vessel × loading-port combination for the
+          chosen destination, ranked by risk-adjusted cost per tonne (Module 6)
+          — composing Module 4's compatibility gate and Module 5's voyage cost,
+          not a separate score. See <code>docs/DECISIONS.md #14, #16</code>.
+        </p>
+      </InfoNote>
 
       <div className="filter-row">
         <div className="filter-group">
@@ -185,6 +230,16 @@ function ByPortPanel({ ports, originPorts, fx }) {
             page's port table for its draft/LOA/beam limits, or try a smaller cargo size.
           </p>
         </div>
+      )}
+
+      {!loading && !error && data && data.length > 0 && currentPort && (
+        <RouteMap
+          anchor={{ lat: currentPort.lat, lon: currentPort.lon, name: currentPort.name }}
+          anchorLabel="Destination"
+          points={mapPoints}
+          focusedId={focusedOriginId}
+          onFocusChange={setFocusedOriginId}
+        />
       )}
 
       {!loading && !error && data && data.length > 0 && (
@@ -391,23 +446,63 @@ function ByVesselPanel({ vessels, originPorts, ports, fx }) {
 
   const { loading, error, data } = useByVesselData(vesselType, originId, cargoTonnes);
   const timing = useTimingData(horizon);
+  const [focusedPortId, setFocusedPortId] = useState(null);
+
+  const currentOrigin = originPorts.find((o) => o.origin_id === originId);
 
   function portName(portId) {
     const match = ports.find((p) => p.port_id === portId);
     return match ? match.name : portId;
   }
 
+  function portLatLon(portId) {
+    const match = ports.find((p) => p.port_id === portId);
+    return match ? { lat: match.lat, lon: match.lon } : { lat: null, lon: null };
+  }
+
+  // Every East Coast port is a map point — compatible or not — mirroring
+  // this mode's own headline feature (DECISIONS.md #24): incompatible
+  // ports are shown, never silently dropped, here included on the map too.
+  const mapPoints = data
+    ? [
+        ...data.compatible_ports.map((opt) => ({
+          id: opt.port_id,
+          ...portLatLon(opt.port_id),
+          name: portName(opt.port_id),
+          status: opt.rank === 1 ? "top" : "compatible",
+          tooltipDetail: `#${opt.rank} · $${opt.risk_adjusted_cost_per_tonne_usd.toFixed(2)}/t`,
+        })),
+        ...data.incompatible_ports.map((entry) => ({
+          id: entry.port_id,
+          ...portLatLon(entry.port_id),
+          name: portName(entry.port_id),
+          status: "incompatible",
+        })),
+      ]
+    : [];
+
+  useEffect(() => {
+    if (!data || data.compatible_ports.length === 0) {
+      setFocusedPortId(null);
+      return;
+    }
+    const top = data.compatible_ports.find((opt) => opt.rank === 1);
+    setFocusedPortId(top ? top.port_id : data.compatible_ports[0].port_id);
+  }, [data]);
+
   return (
     <>
-      <p className="page-intro">
-        Pick a vessel class and an overseas loading port you already have —
-        see which of the 6 East Coast destinations it can actually call at,
-        ranked by risk-adjusted cost per tonne, and whether current pricing
-        favors booking now or waiting. The mirror of the port-first view:
-        that one fixes where you're shipping to and ranks vessels; this
-        fixes the vessel and ranks destinations. See{" "}
-        <code>docs/DECISIONS.md #24</code>.
-      </p>
+      <InfoNote label="What this view shows" className="page-intro-note">
+        <p>
+          Pick a vessel class and an overseas loading port you already have —
+          see which of the 6 East Coast destinations it can actually call at,
+          ranked by risk-adjusted cost per tonne, and whether current pricing
+          favors booking now or waiting. The mirror of the port-first view:
+          that one fixes where you're shipping to and ranks vessels; this
+          fixes the vessel and ranks destinations. See{" "}
+          <code>docs/DECISIONS.md #24</code>.
+        </p>
+      </InfoNote>
 
       <div className="filter-row">
         <div className="filter-group">
@@ -505,6 +600,21 @@ function ByVesselPanel({ vessels, originPorts, ports, fx }) {
                 the reasons below, or try a smaller cargo size or a different vessel class.
               </p>
             </div>
+          )}
+
+          {currentOrigin && mapPoints.length > 0 && (
+            <RouteMap
+              anchor={{
+                lat: currentOrigin.lat,
+                lon: currentOrigin.lon,
+                name: currentOrigin.name,
+                routeWaypoints: currentOrigin.route_waypoints,
+              }}
+              anchorLabel="Loading from"
+              points={mapPoints}
+              focusedId={focusedPortId}
+              onFocusChange={setFocusedPortId}
+            />
           )}
 
           {data.compatible_ports.length > 0 && (

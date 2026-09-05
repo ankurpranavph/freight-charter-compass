@@ -20,7 +20,7 @@ from app.engine.currency import as_dict as exchange_rate_dict
 from app.engine.data_sources import build_data_sources
 from app.engine.forecast import DEFAULT_HORIZON, build_forecast
 from app.engine.optimizer import CargoExceedsCapacityError, rank_options, rank_ports_for_vessel
-from app.engine.voyage import calculate_voyage
+from app.engine.voyage import ROUTE_WAYPOINTS, calculate_voyage
 
 
 @asynccontextmanager
@@ -167,10 +167,20 @@ def compatibility_matrix():
 def list_origin_ports():
     """The fixed small set of overseas coal-loading ports this app costs
     voyages from — see docs/DECISIONS.md #8 for why this isn't a general
-    port database."""
+    port database. Each row also carries `route_waypoints`: the exact
+    open-ocean waypoints app/engine/voyage.py's route_distance_nm uses for
+    this origin's real distance/cost calculation (DECISIONS.md #30) — the
+    frontend's route map draws this same path, not an invented straight
+    line, so the picture matches the number."""
     with db_session() as conn:
         rows = conn.execute("SELECT * FROM origin_ports").fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            row = dict(r)
+            waypoints = ROUTE_WAYPOINTS.get(row["origin_id"], [])
+            row["route_waypoints"] = [list(point) for point in waypoints]
+            result.append(row)
+        return result
 
 
 @app.get("/api/v1/voyage/calculate")

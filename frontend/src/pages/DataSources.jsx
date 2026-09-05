@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import InfoNote from "../components/InfoNote";
 
 const CLASSIFICATION_NOTE = {
   REAL: "An actual figure from a cited, dated source.",
@@ -64,26 +65,30 @@ export default function DataSources() {
   return (
     <div className="page">
       <h1>Data Sources &amp; Assumptions</h1>
-      <p className="page-intro">
-        Every REAL, CALCULATED, SIMULATED, or ASSUMPTION figure this app uses,
-        in one place — read live from the same seeded rows and cited constants
-        every other page already uses, not a separately hand-maintained list
-        that could drift out of sync. See <code>docs/DECISIONS.md #21</code>.
-      </p>
+      <InfoNote label="What this page shows" className="page-intro-note">
+        <p>
+          Every REAL, CALCULATED, SIMULATED, or ASSUMPTION figure this app uses,
+          in one place — read live from the same seeded rows and cited constants
+          every other page already uses, not a separately hand-maintained list
+          that could drift out of sync. See <code>docs/DECISIONS.md #21</code>.
+        </p>
+      </InfoNote>
 
       <section className="data-honesty" style={{ marginBottom: "1.75rem" }}>
-        <dl className="honesty-list">
-          {Object.entries(CLASSIFICATION_NOTE).map(([label, note]) => (
-            <div key={label} style={{ display: "contents" }}>
-              <dt>
-                <span className={`classification-badge classification-badge-${label}`}>
-                  {label}
-                </span>
-              </dt>
-              <dd>{note}</dd>
-            </div>
-          ))}
-        </dl>
+        <InfoNote label="What each label means">
+          <dl className="honesty-list">
+            {Object.entries(CLASSIFICATION_NOTE).map(([label, note]) => (
+              <div key={label} style={{ display: "contents" }}>
+                <dt>
+                  <span className={`classification-badge classification-badge-${label}`}>
+                    {label}
+                  </span>
+                </dt>
+                <dd>{note}</dd>
+              </div>
+            ))}
+          </dl>
+        </InfoNote>
       </section>
 
       {loading && <p className="status-text">Loading data sources…</p>}

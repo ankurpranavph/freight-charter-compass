@@ -1375,3 +1375,139 @@ Updated the two tests that had pinned the old wording
 `test_health.py`) to assert the new, honest, script-free message
 instead. 120/120 tests still pass — no behavior changed, only the
 wording of one string.
+
+
+## 30. Interactive route map on the Recommendation page
+
+**What:** added a small interactive map to both modes of the
+Recommendation page (by-vessel and by-port) showing the loading port,
+the East Coast destination ports, and a line for the actual route
+between whichever pair is currently focused. Clicking a compatible
+marker refocuses the map on that option; incompatible ports are still
+shown (never dropped, consistent with DECISIONS.md #24) but drawn
+muted and are not clickable.
+
+**Why:** a tester asked whether a "live map" would help. Two very
+different things go by that name — a real-time AIS vessel-tracking
+feed, and a static, interactive route visualization. AIS tracking
+would mean a live third-party data dependency, ongoing cost, and a
+feature this app has no real ship positions to back — inconsistent
+with the project's data-honesty framing, and too much new surface
+area to build and verify before the SIH demo. A route map that draws
+the app's own already-real port coordinates and its own already-real
+route calculation is low-risk by comparison: no new data source, no
+external dependency beyond map tiles, and it makes the existing
+distance/cost numbers easier to sanity-check at a glance.
+
+**Key decision — reuse the real route, don't invent a new one.**
+`app/engine/voyage.py` already has a hand-chosen `ROUTE_WAYPOINTS`
+dict per origin port, used by `route_distance_nm()` for the actual
+distance/cost numbers shown everywhere else in the app. A naive
+straight line between origin and destination coordinates would be
+shorter than the real distance and would visibly cut across land
+masses (e.g. Australia to India) — wrong, and inconsistent with the
+number displayed right next to it. Instead, `GET /api/v1/origin-ports`
+now also returns each origin's `route_waypoints` (the exact list
+`route_distance_nm` uses), and the frontend draws that same path,
+closed off with whichever port is focused. The picture always matches
+the number.
+
+**What was built:**
+- Backend: `route_waypoints` field added to `GET /api/v1/origin-ports`
+  (`app/main.py`), sourced directly from `ROUTE_WAYPOINTS` — no new
+  data, just exposing what the engine already had. New test
+  (`test_origin_ports_carry_the_same_route_waypoints_voyage_calc_uses`
+  in `test_voyage.py`) asserts the API's waypoints match the engine's
+  own dict exactly, so the two can never silently drift apart. 121/121
+  backend tests passing (up from 120).
+- Frontend: new `RouteMap.jsx` component built on `react-leaflet`
+  (`leaflet` + `react-leaflet` added as dependencies). Uses
+  `CircleMarker`s (not image-based markers) to sidestep the classic
+  Leaflet-plus-bundler broken-marker-icon problem. Marker color
+  follows the same status convention already used elsewhere in the
+  app (accent green = top/focused, blue = other compatible, muted
+  gray = incompatible — never red, since being excluded isn't an
+  error here, matching the existing `.incompat-row` treatment).
+  Map tiles are OpenStreetMap; port positions are the same REAL
+  harbour-level coordinates already used and labeled elsewhere
+  (DECISIONS.md #11).
+- Wired into both Recommendation panels: in "by vessel" mode the
+  anchor is the fixed loading port (which owns the real waypoints)
+  and the points are the 6 destination ports; in "by port" mode the
+  anchor is the fixed destination and the points are the 3 loading
+  ports (each carrying its own waypoints). The component picks up
+  whichever side actually has `route_waypoints` rather than assuming
+  a fixed direction.
+
+**Honest caveat, not fixed, not hidden:** in "by vessel" mode the map
+is zoomed out enough to show the full ocean crossing, which means the
+6 Indian destination ports — genuinely close together compared to the
+distance from Australia/South Africa/Indonesia — can appear as a
+tight cluster at the default zoom. The map's own zoom controls let a
+user zoom into that cluster to click individual ports; this wasn't
+"fixed" with a split-view or auto-zoom because that adds real
+complexity for a cosmetic issue, and the tight clustering is itself an
+accurate reflection of the real geography, not a rendering bug.
+
+**Verification:** `npm run build` clean; both Recommendation modes
+screenshotted via a headless browser with zero console errors (network
+errors for map tiles are a cloud-sandbox egress restriction only —
+`tile.openstreetmap.org` isn't reachable from the verification
+sandbox, unrelated to the app code, and not expected to occur on the
+user's own machine or on the deployed site).
+
+
+## 31. Text-reduction / "more professional" pass across all 4 pages
+
+**What:** every page's intro paragraph, and every "sourcing"/"methodology"
+explanation that sits under a section heading (REAL/CALCULATED provenance
+notes, the SARIMAX model-parameter dump, the map's "what this is drawing"
+caption, the Data Sources classification legend, Overview's REAL/
+CALCULATED/SIMULATED/ASSUMPTION definitions), is now collapsed by default
+behind a small "ⓘ Label" disclosure, instead of always-visible paragraph
+text. Nothing was cut or reworded — every sentence that was on the page
+before is still there, one click away.
+
+**Why:** a tester asked for a more professional look with less text on
+screen. The app's own data-honesty framing means a lot of real
+explanatory copy (what's REAL vs. CALCULATED, where a number came from,
+why a set of records isn't comparable) — genuinely useful for someone
+checking the app's credibility, but not something every visitor needs to
+read on every glance. Two options were on the table: shorten the copy
+(risking cutting a real caveat) or hide it behind an expand/collapse
+(risking nothing, since the full text survives, just not open by
+default). Chose the second — consistent with a pattern the app already
+had (each option card's "Why this port/vessel works" breakdown is a
+`<details>` collapsed by default) rather than a new idea.
+
+**What was built:** a single reusable `InfoNote` component
+(`frontend/src/components/InfoNote.jsx`) — a `<details>`/`<summary>`
+disclosure styled as a small muted "ⓘ Label" line, expanding to the full
+text below it. Applied it to: each page's top intro paragraph (Overview,
+Forecast, Data Sources, and both Recommendation-page views); every
+section's REAL/CALCULATED/ASSUMPTION sourcing note on Overview; the
+SARIMAX methodology note and the raw model-parameter dump on Forecast;
+the Data Sources page's top intro and its classification legend
+(the actual source catalog below it — the reason the page exists — is
+left fully visible, not collapsed, since hiding the sources themselves
+would work against the page's purpose); and the route map's caption.
+
+**What was deliberately left alone:** the book-now-vs-wait `reasoning`
+text (DecisionCard / TimingCard) and the `insufficient_data` notes stay
+fully visible — these are the actual answer the page exists to give, not
+background methodology, so collapsing them by default would hide the
+one thing a visitor came to read. The "Why this port/vessel works"
+breakdown on each option card and the "Not compatible" reasons list were
+already collapsed/itemized appropriately and needed no change. Every
+individual Data Sources / port-traffic entry (label, detail, citation)
+stays fully visible per entry — collapsing a source catalog's own
+sources would undercut the one page whose whole job is to be checked.
+
+**Verification:** `npm run build` clean, backend still 121/121 passing
+(no backend files touched this pass). All 4 pages (Overview, Forecast,
+both Recommendation views, Data Sources) screenshotted twice each via a
+headless browser — once in the default collapsed state, once with every
+`<details>` on the page forced open — confirming nothing was lost and
+every InfoNote expands cleanly. Zero console errors on any page (the
+same map-tile-blocked warnings from the sandbox's network egress as in
+DECISIONS.md #30, unrelated to this change).

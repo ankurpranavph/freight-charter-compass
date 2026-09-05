@@ -119,7 +119,11 @@ not created speculatively upfront.
   port (currently 24 combinations: 4 vessel classes x 6 ports, since
   ports 4-6 were added — see below), same format.
 - `GET /api/v1/origin-ports` — the 3 fixed overseas coal-loading ports
-  (Australia/South Africa/Indonesia).
+  (Australia/South Africa/Indonesia). Each row also carries
+  `route_waypoints`: the exact real waypoints `voyage.py`'s
+  `route_distance_nm` uses for that origin, served so the frontend's
+  route map (DECISIONS.md #30) draws the same path the cost figure is
+  actually based on.
 - `GET /api/v1/voyage/calculate?vessel_type=&origin_id=&port_id=&cargo_tonnes=`
   — Module 5 (Simulate): one-way laden voyage distance/time/cost. 404 for
   an unknown vessel/origin/port. `cargo_tonnes` optional, defaults to the
@@ -426,7 +430,40 @@ explicitly not comparable to each other or to a "typical month." New
 `GET /api/v1/port-traffic?port_id=`, an 8th Data Sources category, and
 a new Overview page section stating the "not comparable" framing
 plainly. 7 new tests — **120 passing tests total.** See DECISIONS.md
-#26.
+#26. Confirmed by the user and committed as `15-port-traffic-history`.
+
+Real deployment followed (`16-deployment-config`, `17-real-price-
+history-checked-in`, `18-honest-insufficient-data-message` — GitHub ->
+Render -> Vercel, a gitignored real price-history file fixed, and the
+coking-coal insufficient-data message reworded to drop an internal
+script path — see DECISIONS.md #27-29). Test count unchanged by that
+work (120).
+
+**Interactive route map on the Recommendation page.** Both modes
+(by-vessel and by-port) now draw a small interactive map — loading
+port, destination ports, and a route line between whichever pair is
+focused — using the app's own real port coordinates and the same
+`ROUTE_WAYPOINTS` `voyage.py` already uses for the real distance/cost
+calculation, not an invented straight line, so the picture always
+matches the number next to it. `GET /api/v1/origin-ports` now also
+returns each origin's `route_waypoints`. Built with `react-leaflet`;
+`CircleMarker`s (not image markers) to avoid the standard Leaflet
+bundler icon-path issue; marker color follows the app's existing
+status convention (accent = top/focused, blue = other compatible,
+muted gray = incompatible — never red). 1 new test — **121 passing
+tests total.** See DECISIONS.md #30.
+
+**Text-reduction / "more professional" pass (all 4 pages).** Every page
+intro and every REAL/CALCULATED/ASSUMPTION sourcing note is now collapsed
+by default behind a small reusable `InfoNote` disclosure
+(`frontend/src/components/InfoNote.jsx`) — the same collapsed-by-default
+idea the option cards' "Why this port/vessel works" breakdown already
+used. Nothing was cut: every sentence is one click away. Left alone on
+purpose: the book-now-vs-wait reasoning text, the insufficient_data
+notes, and every individual Data Sources entry — those are the actual
+content a visitor came for, not background methodology. No backend
+changes, no new tests (frontend copy/layout only) — still 121 passing.
+See DECISIONS.md #31.
 
 **Not yet built:** the real RBA coking-coal ingestion has not been run
 for real by anyone yet (script exists, layout unverified — see
