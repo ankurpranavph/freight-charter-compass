@@ -1284,3 +1284,52 @@ pass unchanged (the CORS change touches middleware config, not
 behavior any test exercises), and both frontend build variants
 (default and `VITE_API_BASE` override) were built and grepped to
 confirm the right URL lands in the bundled JS either way.
+
+## 28. Checking the real World Bank price history into git, for the deployed backend's sake
+
+Discovered right after the first live Render+Vercel deploy: the
+Forecast page on the deployed site showed "insufficient_data" even
+though the exact same app on localhost has shown full SARIMAX
+forecasts for months. Not a bug — a real gap in what Render's git
+checkout actually contained.
+
+`app/db/seed.py`'s `seed_commodity_prices` has always looked for
+`data_pipeline/processed/commodity_prices_worldbank.csv` and layered
+it on top of the small starter snapshot when present (see its own
+docstring). That file is real — the full 1,480-row coal_australian/
+crude_oil_brent history (1970-2026), ingested once by the user running
+`ingest_worldbank.py` on their own machine back at the Hour 2-5
+checkpoint, and used ever since for every local SARIMAX result in this
+project (DECISIONS.md #13's actual MAE/RMSE numbers came from it).
+
+But `.gitignore` filed the whole `data_pipeline/processed/` directory
+under "generated/local data" — a sensible default when the only
+"deployment" was the user's own machine, since the file is themselves
+reproducible by re-running the ingestion script. Once Render started
+building from a fresh `git clone`, that default became a problem: the
+file was never in the repo, so Render's checkout had only the 3-month
+starter snapshot — one month short of `build_forecast`'s own 30-month
+minimum — and the honest "insufficient_data" message did exactly what
+it's supposed to do, just somewhere the user didn't expect to see it.
+
+**Fix:** a narrow `.gitignore` exception for this one file only (the
+blanket `processed/*` ignore stays for everything else), and the file
+itself checked in — 1,480 rows, ~330KB, real and already cited/sourced
+in every row. No code change needed anywhere: `seed_commodity_prices`
+already knew to look for exactly this path: it simply never found it
+on Render before now.
+
+**Deliberately not done the same way yet:** `commodity_prices_rba_coking.csv`
+doesn't exist locally at all — the RBA coking-coal ingestion script
+(DECISIONS.md #23) has never actually been run against the real file
+by anyone, so there's nothing to check in. `coking_coal` stays on its
+single starter snapshot on both localhost and the deployed site until
+that changes — an honest, consistent gap rather than a deployment-only
+one.
+
+A smaller lesson worth naming for future modules: `.gitignore` choices
+made when "the app" meant "one person's machine" don't automatically
+survive the app growing a second, from-scratch deployment target. Any
+future gitignored "local" file that a fresh clone actually needs to
+run correctly is worth checking for at that point, not assumed fine
+because it always worked locally.
