@@ -20,6 +20,13 @@ backend/data_pipeline/raw/*
 backend/data_pipeline/processed/*
 !backend/data_pipeline/raw/.gitkeep
 !backend/data_pipeline/processed/.gitkeep
+# Exception: the real, ingested World Bank commodity-price history is
+# checked in on purpose so a fresh deploy (Render) has more than the
+# 3-month starter snapshot to seed from -- see DECISIONS.md #28. Not an
+# exception for backend/data_pipeline/processed/commodity_prices_rba_coking.csv
+# yet, since that ingestion script hasn't been run for real against the
+# live file (DECISIONS.md #23) -- add the same exception here once it has.
+!backend/data_pipeline/processed/commodity_prices_worldbank.csv
 backend/ml/artifacts/*.pkl
 data/raw/*
 data/processed/*
