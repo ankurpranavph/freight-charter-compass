@@ -1333,3 +1333,45 @@ survive the app growing a second, from-scratch deployment target. Any
 future gitignored "local" file that a fresh clone actually needs to
 run correctly is worth checking for at that point, not assumed fine
 because it always worked locally.
+
+## 29. Cleaning up the insufficient_data message for real testers
+
+Found right after sharing the deployed link for the first round of
+feedback: the "insufficient_data" message shown for coking coal (on
+both the Forecast page and the Recommendation page's "Coking coal
+timing" card) read `Run data_pipeline/ingest_rba_coking_coal.py to load
+the full history.` — an internal script path, straight in front of
+people who have no reason to know this app has a `data_pipeline/`
+folder. It read like a broken error, not a deliberate design choice.
+
+**Considered and rejected: removing coking coal from view entirely.**
+Coking coal is the commodity SAIL actually procures — the whole reason
+DECISIONS.md #23 exists — and it's deliberately the default selection
+on the Forecast page and shown on Overview's stat cards. Hiding it
+would have meant losing a real, documented differentiator (this app
+caught and fixed a thermal-vs-coking-coal proxy gap most builds would
+miss) while only partially fixing the problem: the same script-path
+leak would still show the moment anyone selected coking coal on the
+Forecast page, since removing just the Recommendation card doesn't
+touch that.
+
+**Fix:** reworded the one place this message is actually generated —
+`build_forecast`'s `note` field in `app/engine/forecast.py` (both the
+Forecast page and `book_or_wait.py`'s `reasoning` field for the timing
+cards read this exact string, so one change fixes both surfaces).
+Dropped the `INGEST_SCRIPT_BY_COMMODITY` lookup and the script-path
+sentence entirely; the note now reads plainly — "Only 1 real month(s)
+of price history are loaded for coking coal — a seasonal forecast
+needs at least 30. See the Data Sources page for exactly what's loaded
+and why." — pointing a curious tester at the page built for exactly
+this question instead of a file path only the developer can act on.
+Still fully honest: it states the real month count and the real
+threshold, same as before, just without assuming the reader can run
+Python scripts.
+
+Updated the two tests that had pinned the old wording
+(`test_insufficient_data_note_points_at_the_right_ingest_script` in
+`test_forecast.py`, `test_coking_coal_forecast_insufficient_data` in
+`test_health.py`) to assert the new, honest, script-free message
+instead. 120/120 tests still pass — no behavior changed, only the
+wording of one string.

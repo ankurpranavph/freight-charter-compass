@@ -150,12 +150,16 @@ def test_coking_coal_forecast_insufficient_data(client):
     # real seeded row (a single dated snapshot, DECISIONS.md #23) until the
     # user runs ingest_rba_coking_coal.py for the real full RBA history --
     # this is deterministic, not conditional on local processed-CSV state.
+    # The note is shown as-is in the UI (Forecast page and Recommendation's
+    # timing cards), so it must read as a plain, honest product message,
+    # not leak the internal script path -- see DECISIONS.md #29.
     r = client.get("/api/v1/forecast/coking_coal")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "insufficient_data"
     assert body["forecast"] == []
-    assert "ingest_rba_coking_coal.py" in body["note"]
+    assert "1 real month" in body["note"]
+    assert "ingest_" not in body["note"]
 
 
 def test_data_sources_endpoint(client):

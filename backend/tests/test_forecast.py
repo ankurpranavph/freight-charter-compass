@@ -95,19 +95,23 @@ def test_build_forecast_insufficient_data():
     assert len(result.historical) == MIN_POINTS_FOR_SARIMAX - 5
 
 
-def test_insufficient_data_note_points_at_the_right_ingest_script():
-    # coking_coal currently has just 1 real seeded row (a single dated
-    # snapshot, see DECISIONS.md #23) until the user runs
-    # ingest_rba_coking_coal.py for the real full history -- the
-    # insufficient_data message must point at THAT script, not the World
-    # Bank one used for coal_australian/crude_oil_brent.
+def test_insufficient_data_note_is_honest_and_user_facing():
+    # The insufficient_data note is shown as-is on both the Forecast page
+    # and the Recommendation page's timing cards (DECISIONS.md #29) --
+    # it must state the real month count plainly, without naming an
+    # internal script path (that used to leak "Run
+    # data_pipeline/ingest_rba_coking_coal.py" straight into the UI).
     df = _synthetic_series(1)
     result = build_forecast("coking_coal", df, horizon=6, use_cache=False)
     assert result.status == "insufficient_data"
-    assert "ingest_rba_coking_coal.py" in result.note
+    assert "1 real month" in result.note
+    assert "coking coal" in result.note
+    assert "ingest_" not in result.note
+    assert ".py" not in result.note
 
     result2 = build_forecast("coal_australian", df, horizon=6, use_cache=False)
-    assert "ingest_worldbank.py" in result2.note
+    assert "coal australian" in result2.note
+    assert "ingest_" not in result2.note
 
 
 def test_build_forecast_ok_path_shape_and_contract():

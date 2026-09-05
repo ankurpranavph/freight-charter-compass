@@ -49,14 +49,6 @@ MIN_POINTS_FOR_SARIMAX = 30  # ~2.5 years; below this, seasonal terms are meanin
 DEFAULT_HOLDOUT = 12
 DEFAULT_HORIZON = 6
 
-# Which ingestion script loads the full history for each commodity — used
-# only to point an insufficient_data message at the right next step.
-INGEST_SCRIPT_BY_COMMODITY = {
-    "coal_australian": "data_pipeline/ingest_worldbank.py",
-    "crude_oil_brent": "data_pipeline/ingest_worldbank.py",
-    "coking_coal": "data_pipeline/ingest_rba_coking_coal.py",
-}
-
 # A small, curated set of candidate (order, seasonal_order) pairs — chosen
 # to cover the standard shapes for a trending + seasonal monthly commodity
 # price series, not an exhaustive search.
@@ -180,16 +172,15 @@ def build_forecast(
     ]
 
     if len(prices) < MIN_POINTS_FOR_SARIMAX:
-        ingest_script = INGEST_SCRIPT_BY_COMMODITY.get(
-            commodity, "the appropriate data_pipeline/ingest_*.py script"
-        )
+        commodity_label = commodity.replace("_", " ")
         result = ForecastResult(
             commodity=commodity,
             status="insufficient_data",
             note=(
-                f"Only {len(prices)} month(s) of history available; need at "
-                f"least {MIN_POINTS_FOR_SARIMAX} for a seasonal forecast. "
-                f"Run {ingest_script} to load the full history."
+                f"Only {len(prices)} real month(s) of price history are "
+                f"loaded for {commodity_label} — a seasonal forecast needs "
+                f"at least {MIN_POINTS_FOR_SARIMAX}. See the Data Sources "
+                f"page for exactly what's loaded and why."
             ),
             historical=historical,
             forecast=[],
